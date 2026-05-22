@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import shutil
 import uuid
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -353,46 +355,52 @@ class DocumentTemplateWorkflowService:
                 raise TemplateToolError(
                     "Preview mode requires both subjects to resolve to draft templates"
                 )
-            baseline_html = self._render_preview_html(
+            baseline_html, candidate_html = self._render_subjects_in_parallel(
                 client=client,
-                draft_uuid=baseline.draft_uuid or "",
-                project_uuid=resolved_fixture.project_uuid,
-                format_uuid=config.regression.format_uuid,
-                timeout_seconds=config.regression.timeout_seconds,
-                poll_seconds=config.regression.poll_seconds,
-            )
-            candidate_html = self._render_preview_html(
-                client=client,
-                draft_uuid=candidate.draft_uuid or "",
-                project_uuid=resolved_fixture.project_uuid,
-                format_uuid=config.regression.format_uuid,
-                timeout_seconds=config.regression.timeout_seconds,
-                poll_seconds=config.regression.poll_seconds,
+                baseline_render=lambda render_client: self._render_preview_html(
+                    client=render_client,
+                    draft_uuid=baseline.draft_uuid or "",
+                    project_uuid=resolved_fixture.project_uuid,
+                    format_uuid=config.regression.format_uuid,
+                    timeout_seconds=config.regression.timeout_seconds,
+                    poll_seconds=config.regression.poll_seconds,
+                ),
+                candidate_render=lambda render_client: self._render_preview_html(
+                    client=render_client,
+                    draft_uuid=candidate.draft_uuid or "",
+                    project_uuid=resolved_fixture.project_uuid,
+                    format_uuid=config.regression.format_uuid,
+                    timeout_seconds=config.regression.timeout_seconds,
+                    poll_seconds=config.regression.poll_seconds,
+                ),
             )
         elif config.regression.mode == "document":
             if baseline.mode != "released" or candidate.mode != "released":
                 raise TemplateToolError(
                     "Document mode requires both subjects to be released template IDs"
                 )
-            baseline_html = self._render_document_html(
+            baseline_html, candidate_html = self._render_subjects_in_parallel(
                 client=client,
-                project_uuid=resolved_fixture.project_uuid,
-                project_event_uuid=resolved_fixture.project_event_uuid,
-                template_uuid=baseline.template_uuid or "",
-                format_uuid=config.regression.format_uuid,
-                timeout_seconds=config.regression.timeout_seconds,
-                poll_seconds=config.regression.poll_seconds,
-                name=f"{fixture.name}-{baseline.label}",
-            )
-            candidate_html = self._render_document_html(
-                client=client,
-                project_uuid=resolved_fixture.project_uuid,
-                project_event_uuid=resolved_fixture.project_event_uuid,
-                template_uuid=candidate.template_uuid or "",
-                format_uuid=config.regression.format_uuid,
-                timeout_seconds=config.regression.timeout_seconds,
-                poll_seconds=config.regression.poll_seconds,
-                name=f"{fixture.name}-{candidate.label}",
+                baseline_render=lambda render_client: self._render_document_html(
+                    client=render_client,
+                    project_uuid=resolved_fixture.project_uuid,
+                    project_event_uuid=resolved_fixture.project_event_uuid,
+                    template_uuid=baseline.template_uuid or "",
+                    format_uuid=config.regression.format_uuid,
+                    timeout_seconds=config.regression.timeout_seconds,
+                    poll_seconds=config.regression.poll_seconds,
+                    name=f"{fixture.name}-{baseline.label}",
+                ),
+                candidate_render=lambda render_client: self._render_document_html(
+                    client=render_client,
+                    project_uuid=resolved_fixture.project_uuid,
+                    project_event_uuid=resolved_fixture.project_event_uuid,
+                    template_uuid=candidate.template_uuid or "",
+                    format_uuid=config.regression.format_uuid,
+                    timeout_seconds=config.regression.timeout_seconds,
+                    poll_seconds=config.regression.poll_seconds,
+                    name=f"{fixture.name}-{candidate.label}",
+                ),
             )
         else:
             raise TemplateToolError(f"Unsupported regression mode {config.regression.mode!r}")
@@ -511,6 +519,36 @@ class DocumentTemplateWorkflowService:
             subject_label=subject.label,
             template_reference=subject.display_id,
         )
+
+    def _render_subjects_in_parallel(
+        self,
+        *,
+        client: DSWApiClient,
+        baseline_render: Callable[[DSWApiClient], str],
+        candidate_render: Callable[[DSWApiClient], str],
+    ) -> tuple[str, str]:
+        def run_isolated(render: Callable[[DSWApiClient], str]) -> str:
+            render_client = self._clone_authenticated_client(client)
+            try:
+                return render(render_client)
+            finally:
+                render_client.close()
+
+        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="dsw-render") as executor:
+            baseline_future = executor.submit(run_isolated, baseline_render)
+            candidate_future = executor.submit(run_isolated, candidate_render)
+            return baseline_future.result(), candidate_future.result()
+
+    @staticmethod
+    def _clone_authenticated_client(client: DSWApiClient) -> DSWApiClient:
+        if client.token is None:
+            raise TemplateToolError("Parallel render requires an authenticated DSW client")
+        render_client = DSWApiClient(
+            api_url=client.api_url,
+            verify_ssl=client.verify_ssl,
+        )
+        render_client.set_token(client.token)
+        return render_client
 
     @staticmethod
     def _load_events(path: Path) -> list[dict[str, Any]]:
