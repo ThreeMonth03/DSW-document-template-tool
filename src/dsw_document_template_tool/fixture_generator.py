@@ -1,4 +1,4 @@
-"""Deterministic questionnaire fixture generation for render regression."""
+"""Deterministic branch-sweeping questionnaire fixtures for render regression."""
 
 from __future__ import annotations
 
@@ -48,6 +48,11 @@ class _GeneratorState:
         )
         self.stats[question_type] = self.stats.get(question_type, 0) + 1
 
+    def add_branch_stat(self, key: str, value: dict[str, Any]) -> None:
+        values = self.stats.setdefault(key, [])
+        if isinstance(values, list):
+            values.append(value)
+
 
 def generate_questionnaire_events(
     questionnaire: dict[str, Any],
@@ -58,12 +63,15 @@ def generate_questionnaire_events(
     max_items_per_list: int = 2,
     answer_probability: float = 1.0,
 ) -> GeneratedQuestionnaireEvents:
-    """Generate deterministic random DSW `SetReplyEvent` values for one project.
+    """Generate deterministic branch-sweeping DSW `SetReplyEvent` values.
 
     The generator intentionally consumes the DSW API's compiled `knowledgeModel`
     instead of replaying KM package history. That keeps the fixture robust when a
     KM package is upgraded: if DSW can create the project, this generator follows
-    the same final chapter/question/answer graph DSW renders.
+    the same final chapter/question/answer graph DSW renders. The case index is
+    converted into a local branch index at each nesting level so follow-up
+    questions continue cycling through their own answers even when parent
+    answers gate their reachability.
     """
 
     knowledge_model = _require_dict(questionnaire, "knowledgeModel")
@@ -81,6 +89,10 @@ def generate_questionnaire_events(
             "case_index": case_index,
             "max_events": max_events,
             "max_items_per_list": max_items_per_list,
+            "selected_answer_indexes": [],
+            "list_cardinalities": [],
+            "multi_choice_shapes": [],
+            "item_selects": [],
         },
     )
 
@@ -98,6 +110,7 @@ def generate_questionnaire_events(
                 question_uuid=question_uuid,
                 path=[chapter_uuid],
                 depth=0,
+                stride=1,
             )
             if not state.budget_remaining:
                 break
@@ -117,6 +130,7 @@ def _visit_question(
     question_uuid: str,
     path: list[str],
     depth: int,
+    stride: int,
 ) -> None:
     if depth > 48 or not state.budget_remaining:
         return
@@ -139,6 +153,7 @@ def _visit_question(
             question_path=question_path,
             question_path_string=question_path_string,
             depth=depth,
+            stride=stride,
         )
     elif question_type == "ListQuestion":
         _answer_list_question(
@@ -149,6 +164,7 @@ def _visit_question(
             question_path=question_path,
             question_path_string=question_path_string,
             depth=depth,
+            stride=stride,
         )
     elif question_type == "ValueQuestion":
         state.add_event(
@@ -172,7 +188,16 @@ def _visit_question(
             question_type=question_type,
         )
     elif question_type == "MultiChoiceQuestion":
-        selected_choice_uuids = _select_choice_uuids(state, question)
+        selected_choice_uuids = _select_choice_uuids(state, question, question_path_string, stride)
+        state.add_branch_stat(
+            "multi_choice_shapes",
+            {
+                "path": question_path_string,
+                "question_uuid": question_uuid,
+                "choice_count": len(_string_list(question.get("choiceUuids"))),
+                "selected_count": len(selected_choice_uuids),
+            },
+        )
         if selected_choice_uuids:
             state.add_event(
                 path=question_path_string,
@@ -180,7 +205,15 @@ def _visit_question(
                 question_type=question_type,
             )
     elif question_type == "ItemSelectQuestion":
-        item_uuid = _select_item_uuid(state, question)
+        item_uuid = _select_item_uuid(state, question, stride)
+        state.add_branch_stat(
+            "item_selects",
+            {
+                "path": question_path_string,
+                "question_uuid": question_uuid,
+                "has_item": item_uuid is not None,
+            },
+        )
         if item_uuid is not None:
             state.add_event(
                 path=question_path_string,
@@ -198,12 +231,14 @@ def _answer_options_question(
     question_path: list[str],
     question_path_string: str,
     depth: int,
+    stride: int,
 ) -> None:
     answers = _require_dict(entities, "answers")
     answer_uuids = _string_list(question.get("answerUuids"))
     if not answer_uuids:
         return
-    answer_index = (_stable_int(question_path_string) + state.case_index) % len(answer_uuids)
+    local_case_index = _local_case_index(state, stride)
+    answer_index = (_stable_int(question_path_string) + local_case_index) % len(answer_uuids)
     answer_uuid = answer_uuids[answer_index]
     answer = answers.get(answer_uuid)
     if not isinstance(answer, dict):
@@ -213,7 +248,18 @@ def _answer_options_question(
         value={"type": "AnswerReply", "value": answer_uuid},
         question_type="OptionsQuestion",
     )
+    state.add_branch_stat(
+        "selected_answer_indexes",
+        {
+            "path": question_path_string,
+            "question_uuid": str(question.get("uuid") or question_path[-1]),
+            "answer_uuid": answer_uuid,
+            "answer_index": answer_index,
+            "answer_count": len(answer_uuids),
+        },
+    )
     follow_up_path = [*question_path, answer_uuid]
+    child_stride = stride * len(answer_uuids)
     for follow_up_question_uuid in _string_list(answer.get("followUpUuids")):
         _visit_question(
             state=state,
@@ -222,6 +268,7 @@ def _answer_options_question(
             question_uuid=follow_up_question_uuid,
             path=follow_up_path,
             depth=depth + 1,
+            stride=child_stride,
         )
 
 
@@ -234,11 +281,21 @@ def _answer_list_question(
     question_path: list[str],
     question_path_string: str,
     depth: int,
+    stride: int,
 ) -> None:
     if state.max_items_per_list == 0:
         return
-    item_count = (_stable_int(question_path_string) + state.case_index) % (
-        state.max_items_per_list + 1
+    cardinality_period = state.max_items_per_list + 1
+    local_case_index = _local_case_index(state, stride)
+    item_count = (_stable_int(question_path_string) + local_case_index) % cardinality_period
+    state.add_branch_stat(
+        "list_cardinalities",
+        {
+            "path": question_path_string,
+            "question_uuid": str(question.get("uuid") or question_path[-1]),
+            "item_count": item_count,
+            "max_items_per_list": state.max_items_per_list,
+        },
     )
     if item_count == 0:
         return
@@ -256,6 +313,7 @@ def _answer_list_question(
     )
 
     item_template_question_uuids = _string_list(question.get("itemTemplateQuestionUuids"))
+    child_stride = stride * cardinality_period
     for item_uuid in item_uuids:
         item_path = [*question_path, item_uuid]
         for item_question_uuid in item_template_question_uuids:
@@ -266,36 +324,50 @@ def _answer_list_question(
                 question_uuid=item_question_uuid,
                 path=item_path,
                 depth=depth + 1,
+                stride=child_stride,
             )
             if not state.budget_remaining:
                 return
 
 
-def _select_choice_uuids(state: _GeneratorState, question: dict[str, Any]) -> list[str]:
+def _select_choice_uuids(
+    state: _GeneratorState,
+    question: dict[str, Any],
+    question_path_string: str,
+    stride: int,
+) -> list[str]:
     choice_uuids = _string_list(question.get("choiceUuids"))
     if not choice_uuids:
         return []
-    selected = [
-        choice_uuid
-        for index, choice_uuid in enumerate(choice_uuids)
-        if (_stable_int(f"{choice_uuid}:{state.case_index}") + index) % 3 == 0
-    ]
-    if not selected and state.case_index % 4 != 0:
-        fallback_index = (_stable_int(str(question.get("uuid"))) + state.case_index) % len(
-            choice_uuids
-        )
-        selected = [choice_uuids[fallback_index]]
-    return selected
+    local_case_index = _local_case_index(state, stride)
+    shape = (_stable_int(question_path_string) + local_case_index) % 4
+    if shape == 0:
+        return []
+    if shape == 1:
+        return [choice_uuids[local_case_index % len(choice_uuids)]]
+    if shape == 2:
+        selected = [
+            choice_uuid
+            for index, choice_uuid in enumerate(choice_uuids)
+            if (index + local_case_index) % 3 == 0
+        ]
+        return selected or [choice_uuids[local_case_index % len(choice_uuids)]]
+    return choice_uuids
 
 
-def _select_item_uuid(state: _GeneratorState, question: dict[str, Any]) -> str | None:
+def _select_item_uuid(
+    state: _GeneratorState,
+    question: dict[str, Any],
+    stride: int,
+) -> str | None:
     list_question_uuid = question.get("listQuestionUuid")
     if not isinstance(list_question_uuid, str):
         return None
     item_uuids = state.item_uuids_by_list_question_uuid.get(list_question_uuid, [])
     if not item_uuids:
         return None
-    return item_uuids[(_stable_int(str(question.get("uuid"))) + state.case_index) % len(item_uuids)]
+    local_case_index = _local_case_index(state, stride)
+    return item_uuids[(_stable_int(str(question.get("uuid"))) + local_case_index) % len(item_uuids)]
 
 
 def _generated_text(state: _GeneratorState, question: dict[str, Any], path: str) -> str:
@@ -319,3 +391,7 @@ def _string_list(value: Any) -> list[str]:
 
 def _stable_int(value: str) -> int:
     return int(hashlib.sha256(value.encode("utf-8")).hexdigest()[:12], 16)
+
+
+def _local_case_index(state: _GeneratorState, stride: int) -> int:
+    return state.case_index // max(1, stride)

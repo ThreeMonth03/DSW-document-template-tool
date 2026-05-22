@@ -61,6 +61,49 @@ def test_generate_questionnaire_events_covers_different_option_answers_across_ca
     assert selected_answers == {"answer-a", "answer-b"}
 
 
+def test_generate_questionnaire_events_cycles_nested_followup_answers() -> None:
+    """Nested follow-up options should not get stuck on one parent parity."""
+
+    questionnaire = _synthetic_questionnaire()
+    nested_answers: set[str] = set()
+
+    for case_index in range(8):
+        generated = generate_questionnaire_events(
+            questionnaire,
+            seed=20260522,
+            case_index=case_index,
+            max_events=50,
+            max_items_per_list=1,
+        )
+        nested_answers.update(
+            entry["answer_uuid"]
+            for entry in generated.stats["selected_answer_indexes"]
+            if entry["question_uuid"] == "q-nested-options"
+        )
+
+    assert nested_answers == {"nested-a", "nested-b"}
+
+
+def test_generate_questionnaire_events_cycles_list_cardinalities() -> None:
+    """List questions should cover empty, single, and repeated item shapes."""
+
+    questionnaire = _synthetic_questionnaire()
+    item_counts = {
+        entry["item_count"]
+        for case_index in range(6)
+        for entry in generate_questionnaire_events(
+            questionnaire,
+            seed=20260522,
+            case_index=case_index,
+            max_events=50,
+            max_items_per_list=2,
+        ).stats["list_cardinalities"]
+        if entry["question_uuid"] == "q-list"
+    }
+
+    assert item_counts == {0, 1, 2}
+
+
 def _synthetic_questionnaire() -> dict[str, object]:
     return {
         "knowledgeModel": {
@@ -84,6 +127,12 @@ def _synthetic_questionnaire() -> dict[str, object]:
                         "title": "Explain the selected branch",
                         "questionType": "ValueQuestion",
                     },
+                    "q-nested-options": {
+                        "uuid": "q-nested-options",
+                        "title": "Choose a nested branch",
+                        "questionType": "OptionsQuestion",
+                        "answerUuids": ["nested-a", "nested-b"],
+                    },
                     "q-list": {
                         "uuid": "q-list",
                         "title": "Datasets",
@@ -104,7 +153,12 @@ def _synthetic_questionnaire() -> dict[str, object]:
                 },
                 "answers": {
                     "answer-a": {"uuid": "answer-a", "followUpUuids": []},
-                    "answer-b": {"uuid": "answer-b", "followUpUuids": ["q-follow-up"]},
+                    "answer-b": {
+                        "uuid": "answer-b",
+                        "followUpUuids": ["q-follow-up", "q-nested-options"],
+                    },
+                    "nested-a": {"uuid": "nested-a", "followUpUuids": []},
+                    "nested-b": {"uuid": "nested-b", "followUpUuids": []},
                 },
             },
         }

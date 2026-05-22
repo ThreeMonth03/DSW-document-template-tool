@@ -111,11 +111,13 @@ By default the shipped configs already point at:
 - `../workspace/document-templates/translation/dsw-science-europe-1.30.0`
 
 The shipped CI config keeps one `empty-project` fixture and adds 80 deterministic
-random fixtures with seed `20260522`. Those random fixtures ask the local DSW API
-for the compiled questionnaire model, generate realistic `SetReplyEvent`
+branch-sweeping fixtures with seed `20260522`. Those fixtures ask the local DSW
+API for the compiled questionnaire model, generate realistic `SetReplyEvent`
 payloads for options, lists, values, integrations, multi-choice questions, and
 item-select questions where possible, and then render both templates against the
-same generated answers.
+same generated answers. Nested follow-up questions use a local branch index, so
+child questions keep cycling through their own answers instead of getting stuck
+on the same parent-case parity.
 
 Knowledge-model package references can still be any of:
 
