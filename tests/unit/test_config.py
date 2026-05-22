@@ -95,10 +95,10 @@ fixtures:
     events_file: fixtures/empty.json
 generated_fixtures:
   - name_prefix: random-project
-    count: 20
+    count: 80
     seed: 20260522
-    max_events: 260
-    max_items_per_list: 2
+    max_events: 320
+    max_items_per_list: 3
     answer_probability: 1.0
     project:
       name: random path
@@ -112,9 +112,10 @@ generated_fixtures:
 
     generated = config.generated_fixtures[0]
     assert generated.name_prefix == "random-project"
-    assert generated.count == 20
+    assert generated.count == 80
     assert generated.seed == 20260522
-    assert generated.max_events == 260
+    assert generated.max_events == 320
+    assert generated.max_items_per_list == 3
     assert generated.project.name == "random path"
 
 

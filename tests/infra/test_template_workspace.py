@@ -272,9 +272,10 @@ def test_shipped_ci_config_includes_random_render_fixtures(repo_root: Path, monk
     assert len(config.generated_fixtures) == 1
     generated = config.generated_fixtures[0]
     assert generated.name_prefix == "random-project"
-    assert generated.count == 20
+    assert generated.count == 80
     assert generated.seed == 20260522
-    assert generated.max_events >= 200
+    assert generated.max_events >= 300
+    assert generated.max_items_per_list == 3
     assert Path(generated.project.knowledge_model_package_id).is_file()
 
 

@@ -110,7 +110,7 @@ By default the shipped configs already point at:
 - `../workspace/document-templates/expanded/dsw-science-europe-1.30.0`
 - `../workspace/document-templates/translation/dsw-science-europe-1.30.0`
 
-The shipped CI config keeps one `empty-project` fixture and adds 20 deterministic
+The shipped CI config keeps one `empty-project` fixture and adds 80 deterministic
 random fixtures with seed `20260522`. Those random fixtures ask the local DSW API
 for the compiled questionnaire model, generate realistic `SetReplyEvent`
 payloads for options, lists, values, integrations, multi-choice questions, and
@@ -293,7 +293,7 @@ In the shipped setup, preview regression compares:
 
 - baseline = checked-in `compact` template
 - candidate = checked-in `expanded` template
-- fixtures = one empty project plus 20 fixed-seed random questionnaire projects
+- fixtures = one empty project plus 80 fixed-seed random questionnaire projects
 
 ### GitHub Actions Workflow
 
