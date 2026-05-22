@@ -64,6 +64,19 @@ class ProjectSeedConfig:
 
 
 @dataclass(frozen=True)
+class GeneratedFixtureConfig:
+    """Recipe for deterministic random fixture projects."""
+
+    name_prefix: str
+    count: int
+    seed: int
+    project: ProjectSeedConfig
+    max_events: int = 260
+    max_items_per_list: int = 2
+    answer_probability: float = 1.0
+
+
+@dataclass(frozen=True)
 class FixtureConfig:
     """One regression fixture project."""
 
@@ -98,6 +111,7 @@ class WorkflowConfig:
     candidate: SubjectConfig
     regression: RegressionConfig
     fixtures: list[FixtureConfig]
+    generated_fixtures: list[GeneratedFixtureConfig] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

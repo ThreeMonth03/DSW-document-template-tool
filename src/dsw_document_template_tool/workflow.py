@@ -10,11 +10,13 @@ from typing import Any
 
 from .api import DSWApiClient, DSWAPIError
 from .config import load_workflow_config
+from .fixture_generator import generate_questionnaire_events
 from .html_diff import build_unified_diff, normalize_html
 from .models import (
     FixtureConfig,
     FixtureProject,
     FixtureRegressionResult,
+    GeneratedFixtureConfig,
     RegressionReport,
     RenderArtifact,
     ResolvedSubject,
@@ -83,6 +85,26 @@ class DocumentTemplateWorkflowService:
                     candidate=candidate,
                 )
                 fixture_results.append(fixture_result)
+
+            for generated_fixture in config.generated_fixtures:
+                for case_index in range(generated_fixture.count):
+                    fixture, resolved_fixture = self._prepare_generated_fixture(
+                        client=client,
+                        config=config,
+                        generated_fixture=generated_fixture,
+                        case_index=case_index,
+                    )
+                    if resolved_fixture.created_by_tool:
+                        created_projects.append(resolved_fixture)
+                    fixture_result = self._compare_fixture(
+                        client=client,
+                        config=config,
+                        fixture=fixture,
+                        resolved_fixture=resolved_fixture,
+                        baseline=baseline,
+                        candidate=candidate,
+                    )
+                    fixture_results.append(fixture_result)
 
             passed = all(result.equal for result in fixture_results)
             report_path = config.regression.output_dir / "regression_report.json"
@@ -245,6 +267,72 @@ class DocumentTemplateWorkflowService:
             project_uuid=project_uuid,
             project_event_uuid=project_event_uuid,
             created_by_tool=created and cleanup_projects,
+        )
+
+    def _prepare_generated_fixture(
+        self,
+        *,
+        client: DSWApiClient,
+        config: WorkflowConfig,
+        generated_fixture: GeneratedFixtureConfig,
+        case_index: int,
+    ) -> tuple[FixtureConfig, FixtureProject]:
+        fixture_name = f"{generated_fixture.name_prefix}-{case_index:03d}"
+        fixture = FixtureConfig(
+            name=fixture_name,
+            project=generated_fixture.project,
+        )
+        project_name = f"{generated_fixture.project.name} {case_index:03d}"
+        unique_name = f"{project_name} [{uuid.uuid4().hex[:8]}]"
+        print(f"INFO: Creating generated fixture project {unique_name}")
+        payload = client.create_project_from_package(
+            name=unique_name,
+            knowledge_model_package_id=generated_fixture.project.knowledge_model_package_id,
+            question_tag_uuids=generated_fixture.project.question_tag_uuids,
+            visibility=generated_fixture.project.visibility,
+            sharing=generated_fixture.project.sharing,
+        )
+        project_uuid = str(payload["uuid"])
+        try:
+            questionnaire = client.get_project_questionnaire(project_uuid)
+            generated = generate_questionnaire_events(
+                questionnaire,
+                seed=generated_fixture.seed,
+                case_index=case_index,
+                max_events=generated_fixture.max_events,
+                max_items_per_list=generated_fixture.max_items_per_list,
+                answer_probability=generated_fixture.answer_probability,
+            )
+            fixture_output_dir = config.regression.output_dir / fixture_name
+            fixture_output_dir.mkdir(parents=True, exist_ok=True)
+            (fixture_output_dir / "fixture.events.json").write_text(
+                json.dumps(generated.events, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            (fixture_output_dir / "fixture.stats.json").write_text(
+                json.dumps(generated.stats, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            print(
+                f"INFO: Applying {len(generated.events)} generated fixture events to {project_uuid}"
+            )
+            client.put_project_content(project_uuid=project_uuid, events=generated.events)
+            project_event_uuid = client.get_latest_project_event_uuid(project_uuid)
+        except Exception:
+            if config.regression.cleanup_projects:
+                try:
+                    client.delete_project(project_uuid)
+                except Exception as exc:
+                    print(f"WARNING: Failed to clean up project {project_uuid}: {exc}")
+            raise
+        return (
+            fixture,
+            FixtureProject(
+                name=fixture.name,
+                project_uuid=project_uuid,
+                project_event_uuid=project_event_uuid,
+                created_by_tool=config.regression.cleanup_projects,
+            ),
         )
 
     def _compare_fixture(

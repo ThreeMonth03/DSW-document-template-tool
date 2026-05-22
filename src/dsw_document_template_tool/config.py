@@ -11,6 +11,7 @@ import yaml
 from .models import (
     ApiConfig,
     FixtureConfig,
+    GeneratedFixtureConfig,
     ProjectSeedConfig,
     RegressionConfig,
     SubjectConfig,
@@ -82,6 +83,13 @@ def _optional_int(parent: dict[str, Any], key: str, default: int) -> int:
     return value
 
 
+def _require_int(parent: dict[str, Any], key: str) -> int:
+    value = parent.get(key)
+    if not isinstance(value, int):
+        raise WorkflowConfigError(f"Expected integer at `{key}`")
+    return value
+
+
 def _optional_str_list(parent: dict[str, Any], key: str) -> list[str]:
     value = parent.get(key, [])
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
@@ -121,6 +129,23 @@ def _resolve_executable_reference(base_dir: Path, value: str | None) -> str:
     resolved = _resolve_path(base_dir, value)
     assert resolved is not None
     return str(resolved)
+
+
+def _load_project_seed_config(
+    *,
+    base_dir: Path,
+    project_payload: dict[str, Any],
+) -> ProjectSeedConfig:
+    return ProjectSeedConfig(
+        name=_require_str(project_payload, "name"),
+        knowledge_model_package_id=_resolve_package_reference(
+            base_dir,
+            _require_str(project_payload, "knowledge_model_package_id"),
+        ),
+        question_tag_uuids=_optional_str_list(project_payload, "question_tag_uuids"),
+        visibility=_optional_str(project_payload, "visibility") or "PrivateProjectVisibility",
+        sharing=_optional_str(project_payload, "sharing") or "RestrictedProjectSharing",
+    )
 
 
 def _reject_unexpanded_env_var(value: str, key: str) -> str:
@@ -216,16 +241,9 @@ def load_workflow_config(config_path: str | Path) -> WorkflowConfig:
         if project_payload is not None:
             if not isinstance(project_payload, dict):
                 raise WorkflowConfigError(f"Fixture #{index} `project` must be a mapping")
-            project = ProjectSeedConfig(
-                name=_require_str(project_payload, "name"),
-                knowledge_model_package_id=_resolve_package_reference(
-                    base_dir,
-                    _require_str(project_payload, "knowledge_model_package_id"),
-                ),
-                question_tag_uuids=_optional_str_list(project_payload, "question_tag_uuids"),
-                visibility=_optional_str(project_payload, "visibility")
-                or "PrivateProjectVisibility",
-                sharing=_optional_str(project_payload, "sharing") or "RestrictedProjectSharing",
+            project = _load_project_seed_config(
+                base_dir=base_dir,
+                project_payload=project_payload,
             )
         fixture = FixtureConfig(
             name=_require_str(fixture_payload, "name"),
@@ -244,6 +262,48 @@ def load_workflow_config(config_path: str | Path) -> WorkflowConfig:
             )
         fixtures.append(fixture)
 
+    generated_fixtures_payload = payload.get("generated_fixtures", [])
+    if not isinstance(generated_fixtures_payload, list):
+        raise WorkflowConfigError("Expected list at `generated_fixtures`")
+    generated_fixtures: list[GeneratedFixtureConfig] = []
+    for index, generated_payload in enumerate(generated_fixtures_payload, start=1):
+        if not isinstance(generated_payload, dict):
+            raise WorkflowConfigError(f"Generated fixture #{index} must be a mapping")
+        project_payload = generated_payload.get("project")
+        if not isinstance(project_payload, dict):
+            raise WorkflowConfigError(f"Generated fixture #{index} `project` must be a mapping")
+        generated_fixture = GeneratedFixtureConfig(
+            name_prefix=_require_str(generated_payload, "name_prefix"),
+            count=_require_int(generated_payload, "count"),
+            seed=_require_int(generated_payload, "seed"),
+            project=_load_project_seed_config(
+                base_dir=base_dir,
+                project_payload=project_payload,
+            ),
+            max_events=_optional_int(generated_payload, "max_events", 260),
+            max_items_per_list=_optional_int(generated_payload, "max_items_per_list", 2),
+            answer_probability=_optional_float(generated_payload, "answer_probability", 1.0),
+        )
+        if generated_fixture.count < 1:
+            raise WorkflowConfigError(
+                f"Generated fixture `{generated_fixture.name_prefix}` must have count >= 1"
+            )
+        if generated_fixture.max_events < 1:
+            raise WorkflowConfigError(
+                f"Generated fixture `{generated_fixture.name_prefix}` must have max_events >= 1"
+            )
+        if generated_fixture.max_items_per_list < 0:
+            raise WorkflowConfigError(
+                "Generated fixture "
+                f"`{generated_fixture.name_prefix}` must have max_items_per_list >= 0"
+            )
+        if not 0 <= generated_fixture.answer_probability <= 1:
+            raise WorkflowConfigError(
+                "Generated fixture "
+                f"`{generated_fixture.name_prefix}` must have answer_probability between 0 and 1"
+            )
+        generated_fixtures.append(generated_fixture)
+
     if regression.mode == "document":
         for fixture in fixtures:
             if fixture.project_event_uuid is None and fixture.events_file is None:
@@ -260,4 +320,5 @@ def load_workflow_config(config_path: str | Path) -> WorkflowConfig:
         candidate=candidate,
         regression=regression,
         fixtures=fixtures,
+        generated_fixtures=generated_fixtures,
     )

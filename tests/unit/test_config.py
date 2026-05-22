@@ -59,6 +59,65 @@ fixtures:
     assert config.fixtures[0].events_file == events_path.resolve()
 
 
+def test_load_workflow_config_supports_generated_fixtures(tmp_path: Path, monkeypatch) -> None:
+    """CI can ask the workflow to create deterministic random fixture projects."""
+
+    monkeypatch.setenv("DSW_API_URL", "http://localhost:3000/wizard-api")
+    monkeypatch.setenv("DSW_API_KEY", "secret-token")
+
+    fixtures_dir = tmp_path / "fixtures"
+    fixtures_dir.mkdir()
+    events_path = fixtures_dir / "empty.json"
+    events_path.write_text("[]\n", encoding="utf-8")
+
+    config_path = tmp_path / "workflow.yml"
+    config_path.write_text(
+        """
+api:
+  url: ${DSW_API_URL}
+  token: ${DSW_API_KEY}
+subjects:
+  baseline:
+    kind: draft_id
+    value: myorg:baseline:1.0.0
+  candidate:
+    kind: draft_id
+    value: myorg:candidate:1.0.0
+regression:
+  mode: preview
+  format_uuid: html-format-uuid
+  output_dir: outputs
+fixtures:
+  - name: empty-project
+    project:
+      name: empty path
+      knowledge_model_package_id: myorg:km:1.0.0
+    events_file: fixtures/empty.json
+generated_fixtures:
+  - name_prefix: random-project
+    count: 20
+    seed: 20260522
+    max_events: 260
+    max_items_per_list: 2
+    answer_probability: 1.0
+    project:
+      name: random path
+      knowledge_model_package_id: myorg:km:1.0.0
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    config = load_workflow_config(config_path)
+
+    generated = config.generated_fixtures[0]
+    assert generated.name_prefix == "random-project"
+    assert generated.count == 20
+    assert generated.seed == 20260522
+    assert generated.max_events == 260
+    assert generated.project.name == "random path"
+
+
 def test_load_workflow_config_rejects_unexpanded_env_var(tmp_path: Path, monkeypatch) -> None:
     """Missing CI secrets should fail fast during config loading."""
 

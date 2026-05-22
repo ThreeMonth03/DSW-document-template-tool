@@ -83,6 +83,8 @@ The most common setup is:
 - `baseline` = original local template directory
 - `candidate` = refactored local template directory
 - `fixtures` = one or more project-event payloads that exercise critical branches
+- `generated_fixtures` = optional deterministic random projects generated from
+  DSW's compiled questionnaire model
 
 `config/regression.ci.yml` is for the checked-in GitHub Actions workflow. It
 talks to an ephemeral local DSW stack started by `make start-ci-dsw` and uses
@@ -108,8 +110,12 @@ By default the shipped configs already point at:
 - `../workspace/document-templates/expanded/dsw-science-europe-1.30.0`
 - `../workspace/document-templates/translation/dsw-science-europe-1.30.0`
 
-The shipped fixture is intentionally named `empty-project`; add real exported
-event fixtures before relying on render regression for branch coverage.
+The shipped CI config keeps one `empty-project` fixture and adds 20 deterministic
+random fixtures with seed `20260522`. Those random fixtures ask the local DSW API
+for the compiled questionnaire model, generate realistic `SetReplyEvent`
+payloads for options, lists, values, integrations, multi-choice questions, and
+item-select questions where possible, and then render both templates against the
+same generated answers.
 
 Knowledge-model package references can still be any of:
 
@@ -204,6 +210,7 @@ successfully. When a mismatch is found, the command exits non-zero and writes:
 
 - raw rendered HTML for each side
 - normalized HTML for each side
+- generated fixture events and coverage stats for random fixtures
 - unified diff files
 - `regression_report.json`
 
@@ -244,6 +251,8 @@ Each fixture should cover one meaningful branch combination. For example:
 - repeated item list populated
 
 Do not rely on only one fixture if the template contains branching language.
+For CI, prefer `generated_fixtures` for broad randomized coverage and keep a few
+hand-authored `fixtures` for exact bug reproductions or domain-specific paths.
 
 ### Recommended CI Shape
 
@@ -284,6 +293,7 @@ In the shipped setup, preview regression compares:
 
 - baseline = checked-in `compact` template
 - candidate = checked-in `expanded` template
+- fixtures = one empty project plus 20 fixed-seed random questionnaire projects
 
 ### GitHub Actions Workflow
 

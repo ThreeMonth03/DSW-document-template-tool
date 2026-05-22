@@ -209,6 +209,11 @@ class DSWApiClient:
         )
         self._raise_for_status(response, expected_statuses={200, 204})
 
+    def get_project_questionnaire(self, project_uuid: str) -> dict[str, Any]:
+        """Fetch one project with the server-compiled knowledge model."""
+
+        return self._request_json("GET", f"/projects/{project_uuid}/questionnaire")
+
     def get_latest_project_event_uuid(self, project_uuid: str) -> str:
         """Return the newest event UUID for one project."""
 

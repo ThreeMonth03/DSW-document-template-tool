@@ -259,6 +259,25 @@ def test_shipped_preview_config_resolves_checked_in_workspace(repo_root: Path, m
     assert config.fixtures[0].events_file.is_file()
 
 
+def test_shipped_ci_config_includes_random_render_fixtures(repo_root: Path, monkeypatch) -> None:
+    """The CI render job should exercise more than the empty questionnaire."""
+
+    monkeypatch.setenv("DSW_API_URL", "http://localhost:3000/wizard-api")
+    monkeypatch.setenv("DSW_EMAIL", "albert.einstein@example.com")
+    monkeypatch.setenv("DSW_PASSWORD", "password")
+
+    config = load_workflow_config(repo_root / "config" / "regression.ci.yml")
+
+    assert config.fixtures[0].name == "empty-project"
+    assert len(config.generated_fixtures) == 1
+    generated = config.generated_fixtures[0]
+    assert generated.name_prefix == "random-project"
+    assert generated.count == 20
+    assert generated.seed == 20260522
+    assert generated.max_events >= 200
+    assert Path(generated.project.knowledge_model_package_id).is_file()
+
+
 def test_shipped_ci_config_uses_ephemeral_local_dsw(repo_root: Path, monkeypatch) -> None:
     """The CI regression config should not require GitHub Actions secrets."""
 
