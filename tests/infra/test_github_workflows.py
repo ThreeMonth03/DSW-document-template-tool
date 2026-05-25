@@ -75,7 +75,9 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
     workflow = load_workflow_yaml(workflow_path)
     workflow_text = workflow_path.read_text(encoding="utf-8")
 
-    assert workflow["on"]["pull_request"]["branches"] == ["**"]
+    assert workflow["on"]["pull_request"]["branches"] == ["master"]
+    assert workflow["on"]["schedule"][0]["cron"] == "0 20 * * *"
+    assert "workflow_dispatch" not in workflow["on"]
     assert workflow["permissions"]["contents"] == "read"
     assert workflow["env"]["TOOLING_REPOSITORY"] == "ThreeMonth03/DSW-document-template-tool"
     assert workflow["env"]["TOOLING_REF"] == "master"
