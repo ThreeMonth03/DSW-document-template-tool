@@ -11,7 +11,7 @@ permissions:
 env:
   # Pin this to a released branch/tag in production.
   TOOLING_REPOSITORY: ThreeMonth03/DSW-document-template-tool
-  TOOLING_REF: ci-ephemeral-dsw-regression
+  TOOLING_REF: master
 
   # Change only these paths for the host repository.
   COMPACT_TEMPLATE_DIR: workspace/document-templates/compact/dsw-science-europe-1.30.0

@@ -78,7 +78,7 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
     assert workflow["on"]["pull_request"]["branches"] == ["**"]
     assert workflow["permissions"]["contents"] == "read"
     assert workflow["env"]["TOOLING_REPOSITORY"] == "ThreeMonth03/DSW-document-template-tool"
-    assert workflow["env"]["TOOLING_REF"] == "ci-ephemeral-dsw-regression"
+    assert workflow["env"]["TOOLING_REF"] == "master"
     assert workflow["env"]["COMPACT_TEMPLATE_DIR"].startswith(
         "workspace/document-templates/compact/"
     )
