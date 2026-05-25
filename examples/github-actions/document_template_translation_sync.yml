@@ -8,7 +8,13 @@ on:
     - cron: "0 20 * * *"
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: >-
+    document-template-translation-sync-${{ github.event_name == 'pull_request' &&
+    github.event.pull_request.head.ref || 'master' }}
+  cancel-in-progress: false
 
 env:
   # Pin this to a released branch/tag in production.
@@ -27,13 +33,24 @@ env:
 
 jobs:
   translation-sync:
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      (github.event_name == 'schedule' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout template repository
         uses: actions/checkout@v4
         with:
+          repository: >-
+            ${{ github.event_name == 'pull_request' &&
+            github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: >-
+            ${{ github.event_name == 'pull_request' &&
+            github.event.pull_request.head.ref || 'master' }}
           path: template-repo
+          fetch-depth: 0
 
       - name: Checkout DSW document-template tooling
         uses: actions/checkout@v4
@@ -67,6 +84,32 @@ jobs:
           "$TOOL_ROOT/.venv/bin/python" "$TOOL_ROOT/src/translation_tree.py" export \
             --source "$HOST_ROOT/$EXPANDED_TEMPLATE_DIR" \
             --output "$HOST_ROOT/$TRANSLATION_TREE_DIR"
+
+      - name: Auto-commit repaired translation inputs
+        working-directory: template-repo
+        env:
+          TARGET_REF: >-
+            ${{ github.event_name == 'pull_request' &&
+            github.event.pull_request.head.ref || 'master' }}
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --short -- "$EXPANDED_TEMPLATE_DIR" "$TRANSLATION_TREE_DIR")" ]; then
+            echo "No generated translation input repairs to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$EXPANDED_TEMPLATE_DIR" "$TRANSLATION_TREE_DIR"
+          git commit -m "chore(sync): refresh document template translations"
+          git push origin "HEAD:$TARGET_REF"
+
+          {
+            echo "## Auto-committed translation repairs"
+            echo
+            echo "The workflow refreshed generated template/translation inputs and pushed"
+            echo "the repair commit back to \`$TARGET_REF\`."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check generated translation inputs are committed
         working-directory: template-repo
@@ -173,3 +216,13 @@ jobs:
             template-repo/${{ env.PROJECT_RENDER_OUTPUT }}
             template-repo/${{ env.PROJECT_RENDER_OUTPUT }}.json
             tooling-repo/outputs/ci-dsw/
+
+  skip-fork-pr:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Explain fork PR skip policy
+        run: echo "Skipping auto-sync commit for fork pull requests."

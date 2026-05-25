@@ -78,7 +78,10 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
     assert workflow["on"]["pull_request"]["branches"] == ["master"]
     assert workflow["on"]["schedule"][0]["cron"] == "0 20 * * *"
     assert "workflow_dispatch" not in workflow["on"]
-    assert workflow["permissions"]["contents"] == "read"
+    assert workflow["permissions"]["contents"] == "write"
+    assert "github.actor != 'github-actions[bot]'" in workflow_text
+    assert "github.event.pull_request.head.repo.full_name == github.repository" in workflow_text
+    assert "skip-fork-pr" in workflow["jobs"]
     assert workflow["env"]["TOOLING_REPOSITORY"] == "ThreeMonth03/DSW-document-template-tool"
     assert workflow["env"]["TOOLING_REF"] == "master"
     assert workflow["env"]["COMPACT_TEMPLATE_DIR"].startswith(
@@ -93,8 +96,14 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
     assert workflow["env"]["PROJECT_REF"] == "workspace/projects/test-project.json"
     assert workflow["env"]["PROJECT_RENDER_OUTPUT"].startswith("outputs/project-render/")
     assert "tooling-repo" in workflow_text
+    assert "fetch-depth: 0" in workflow_text
+    assert "github.event.pull_request.head.ref" in workflow_text
     assert 'src/transform_template.py" expand' in workflow_text
     assert 'src/translation_tree.py" export' in workflow_text
+    assert "Auto-commit repaired translation inputs" in workflow_text
+    assert "chore(sync): refresh document template translations" in workflow_text
+    assert 'git add "$EXPANDED_TEMPLATE_DIR" "$TRANSLATION_TREE_DIR"' in workflow_text
+    assert 'git push origin "HEAD:$TARGET_REF"' in workflow_text
     assert 'src/translation_tree.py" sync' in workflow_text
     assert "Translation sync failed" in workflow_text
     assert "GITHUB_STEP_SUMMARY" in workflow_text
