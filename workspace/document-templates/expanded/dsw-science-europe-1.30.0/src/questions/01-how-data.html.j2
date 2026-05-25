@@ -69,10 +69,7 @@
               {%- if qualityCount == 1 -%}
                 {# __tr_branch_sentence_original:PHA-CiAgICAgICAgICAgICAgICAgIFdlIHdpbGwgYmUgdXNpbmcKICAgICAgICAgICAgICAgICAgeyUgaWYgY2FsaWJyYXRpbmcgLSV9CiAgICAgICAgICAgICAgICAgICAgY2FsaWJyYXRpbmcgbWVhc3VyZW1lbnRzCiAgICAgICAgICAgICAgICAgIHslLSBlbmRpZiAtJX0KICAgICAgICAgICAgICAgICAgeyUtIGlmIHJlcGV0aXRpb24gLSV9CiAgICAgICAgICAgICAgICAgICAgcmVwZWF0IHNhbXBsZXMvbWVhc3VyZW1lbnRzCiAgICAgICAgICAgICAgICAgIHslLSBlbmRpZiAtJX0KICAgICAgICAgICAgICAgICAgeyUtIGlmIHN0YW5kYXJkaXplZCAtJX0KICAgICAgICAgICAgICAgICAgICBzdGFuZGFyZGl6ZWQgZGF0YSBjYXB0dXJlL3JlY29yZGluZwogICAgICAgICAgICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAgICAgICAgICAgICAgIHslLSBpZiB2YWxpZGF0aW9uIC0lfQogICAgICAgICAgICAgICAgICAgIDxlbT5EYXRhIEVudHJ5PC9lbT4gdmFsaWRhdGlvbgogICAgICAgICAgICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAgICAgICAgICAgICAgIHslLSBpZiBwZWVyUmV2aWV3IC0lfQogICAgICAgICAgICAgICAgICAgIGRhdGEgcGVlciByZXZpZXcKICAgICAgICAgICAgICAgICAgeyUtIGVuZGlmIC0lfQogICAgICAgICAgICAgICAgICB7JS0gaWYgdm9jYWJ1bGFyaWVzIC0lfQogICAgICAgICAgICAgICAgICAgIGNvbnRyb2xsZWQgdm9jYWJ1bGFyaWVzCiAgICAgICAgICAgICAgICAgIHslLSBlbmRpZiAlfQogICAgICAgICAgICAgICAgICB7JS0gaWYgY29uc2lzdGVuY3kgLSV9CiAgICAgICAgICAgICAgICAgICAgbWVhc3VyaW5nIHNhbXBsZXMgZm9yIHdoaWNoIHRoZSBvdXRjb21lIGlzIGtub3duIGluIG9yZGVyIHRvIG1vbml0b3IgY29uc2lzdGVuY3kKICAgICAgICAgICAgICAgICAgeyUtIGVuZGlmICV9CiAgICAgICAgICAgICAgICAgIGFzIHBhcnQgb2YgdGhlIHF1YWxpdHkgcHJvY2Vzcy4KICAgICAgICAgICAgICAgIDwvcD4= #}{% if calibrating -%}{# __tr_block_0006:start #}<p>
                   We will be using
-                  
-                    calibrating measurements
-                  
-                  
+                  calibrating measurements
                   
                   
                   
@@ -81,11 +78,7 @@
                   as part of the quality process.
                 </p>{# __tr_block_0006:end #}{%- endif -%}{%- if repetition -%}{# __tr_block_0007:start #}<p>
                   We will be using
-                  
-                  
-                    repeat samples/measurements
-                  
-                  
+                  repeat samples/measurements
                   
                   
                   
@@ -94,11 +87,7 @@
                 </p>{# __tr_block_0007:end #}{%- endif -%}{%- if standardized -%}{# __tr_block_0008:start #}<p>
                   We will be using
                   
-                  
-                  
-                    standardized data capture/recording
-                  
-                  
+                  standardized data capture/recording
                   
                   
                   
@@ -107,11 +96,7 @@
                   We will be using
                   
                   
-                  
-                  
-                    <em>Data Entry</em> validation
-                  
-                  
+                  <em>Data Entry</em> validation
                   
                   
                   as part of the quality process.
@@ -120,11 +105,7 @@
                   
                   
                   
-                  
-                  
-                    data peer review
-                  
-                  
+                  data peer review
                   
                   as part of the quality process.
                 </p>{# __tr_block_0010:end #}{%- endif -%}{%- if vocabularies -%}{# __tr_block_0011:start #}<p>
@@ -133,10 +114,7 @@
                   
                   
                   
-                  
-                  
-                    controlled vocabularies
-                  
+                  controlled vocabularies
                   
                   as part of the quality process.
                 </p>{# __tr_block_0011:end #}{%- endif %}{%- if consistency -%}{# __tr_block_0012:start #}<p>
@@ -146,10 +124,7 @@
                   
                   
                   
-                  
-                  
-                    measuring samples for which the outcome is known in order to monitor consistency
-                  
+                  measuring samples for which the outcome is known in order to monitor consistency
                   as part of the quality process.
                 </p>{# __tr_block_0012:end #}{%- endif %}{# __tr_branch_sentence_original:end #}
               {%- elif qualityCount > 1 -%}
@@ -408,19 +383,7 @@
           {%- set nrefDataComplete = [nrefDataUsedPrefix, uuids.nrefDataCompleteQUuid]|reply_path  -%}
           {%- set nrefDataCompleteReply = repliesMap[nrefDataComplete]|reply_str_value -%}
           {%- if nrefDataCompleteReply -%}
-            {# __tr_branch_sentence_original:PHA-V2Ugd2lsbCB1c2V7eysiICJ9fQogICAgICAgICAgICB7JS0gaWYgbnJlZkRhdGFDb21wbGV0ZVJlcGx5ID09IHV1aWRzLm5yZWZEYXRhQ29tcGxldGVVc2VBVXVpZCAtJX0KICAgICAgICAgICAgICB0aGUgY29tcGxldGUgZGF0YSBzZXQuIAogICAgICAgICAgICB7JS0gZWxpZiBucmVmRGF0YUNvbXBsZXRlUmVwbHkgPT0gdXVpZHMubnJlZkRhdGFDb21wbGV0ZURvY3VtZW50QVV1aWQgLSV9CiAgICAgICAgICAgICAgb25seSBzdWJzZXQgb2YgZGF0YSBhbmQgd2Ugd2lsbCBzZWxlY3QgaXQgYnkgZmlsdGVyaW5nIGFuZC9vciBzZWxlY3Rpb24gKHdoaWNoIHdpbGwgYmUgZG9jdW1lbnRlZCkuCiAgICAgICAgICAgIHslLSBlbGlmIG5yZWZEYXRhQ29tcGxldGVSZXBseSA9PSB1dWlkcy5ucmVmRGF0YUNvbXBsZXRlU3Vic2V0QVV1aWQgLSV9CiAgICAgICAgICAgICAgb25seSBzZWxlY3RlZCBzdWJzZXQgb2YgZGF0YSwgd2hpY2ggd2lsbCBiZSBhdmFpbGFibGUgdG9nZXRoZXIgd2l0aCBvdXIgcmVzdWx0cy4KICAgICAgICAgICAgeyUtIGVuZGlmIC0lfQogICAgICAgICAgICA8L3A- #}{%- if nrefDataCompleteReply == uuids.nrefDataCompleteUseAUuid -%}<p>We will use{{+" "}}
-            
-              the complete data set. 
-            
-            </p>{%- elif nrefDataCompleteReply == uuids.nrefDataCompleteDocumentAUuid -%}<p>We will use{{+" "}}
-            
-              only subset of data and we will select it by filtering and/or selection (which will be documented).
-            
-            </p>{%- elif nrefDataCompleteReply == uuids.nrefDataCompleteSubsetAUuid -%}<p>We will use{{+" "}}
-            
-              only selected subset of data, which will be available together with our results.
-            
-            </p>{%- endif -%}{# __tr_branch_sentence_original:end #}
+            {# __tr_branch_sentence_original:PHA-V2Ugd2lsbCB1c2V7eysiICJ9fQogICAgICAgICAgICB7JS0gaWYgbnJlZkRhdGFDb21wbGV0ZVJlcGx5ID09IHV1aWRzLm5yZWZEYXRhQ29tcGxldGVVc2VBVXVpZCAtJX0KICAgICAgICAgICAgICB0aGUgY29tcGxldGUgZGF0YSBzZXQuIAogICAgICAgICAgICB7JS0gZWxpZiBucmVmRGF0YUNvbXBsZXRlUmVwbHkgPT0gdXVpZHMubnJlZkRhdGFDb21wbGV0ZURvY3VtZW50QVV1aWQgLSV9CiAgICAgICAgICAgICAgb25seSBzdWJzZXQgb2YgZGF0YSBhbmQgd2Ugd2lsbCBzZWxlY3QgaXQgYnkgZmlsdGVyaW5nIGFuZC9vciBzZWxlY3Rpb24gKHdoaWNoIHdpbGwgYmUgZG9jdW1lbnRlZCkuCiAgICAgICAgICAgIHslLSBlbGlmIG5yZWZEYXRhQ29tcGxldGVSZXBseSA9PSB1dWlkcy5ucmVmRGF0YUNvbXBsZXRlU3Vic2V0QVV1aWQgLSV9CiAgICAgICAgICAgICAgb25seSBzZWxlY3RlZCBzdWJzZXQgb2YgZGF0YSwgd2hpY2ggd2lsbCBiZSBhdmFpbGFibGUgdG9nZXRoZXIgd2l0aCBvdXIgcmVzdWx0cy4KICAgICAgICAgICAgeyUtIGVuZGlmIC0lfQogICAgICAgICAgICA8L3A- #}{%- if nrefDataCompleteReply == uuids.nrefDataCompleteUseAUuid -%}<p>We will use{{+" "}}the complete data set.</p>{%- elif nrefDataCompleteReply == uuids.nrefDataCompleteDocumentAUuid -%}<p>We will use{{+" "}}only subset of data and we will select it by filtering and/or selection (which will be documented).</p>{%- elif nrefDataCompleteReply == uuids.nrefDataCompleteSubsetAUuid -%}<p>We will use{{+" "}}only selected subset of data, which will be available together with our results.</p>{% else %}<p>We will use{{+" "}}</p>{%- endif -%}{# __tr_branch_sentence_original:end #}
           {%- endif -%}
 
           {# Format #}
@@ -434,15 +397,7 @@
           {%- set nrefDataFixed = [nrefDataUsedPrefix, uuids.nrefDataFixedQUuid]|reply_path -%}
           {%- set nrefDataFixedReply = repliesMap[nrefDataFixed]|reply_str_value -%}
           {%- if nrefDataFixedReply %}
-            {# __tr_branch_sentence_original:PHA-VGhpcyBkYXRhe3srIiAifX0KICAgICAgICAgICAgeyUtIGlmIG5yZWZEYXRhRml4ZWRSZXBseSA9PSB1dWlkcy5ucmVmRGF0YUZpeGVkRml4ZWRBVXVpZCAtJX0KICAgICAgICAgICAgICBhcmUgZml4ZWQsIHRoZXJlZm9yZSB3aWxsIG5vdCBpbmZsdWVuY2UgcmVwcm9kdWNpYmlsaXR5IG9mIG91ciByZXN1bHRzLgogICAgICAgICAgICB7JS0gZWxpZiBucmVmRGF0YUZpeGVkUmVwbHkgPT0gdXVpZHMubnJlZkRhdGFGaXhlZENoYW5nZUFVdWlkIC0lfQogICAgICAgICAgICAgIG1heSBjaGFuZ2UgaW4gdGhlIGZ1dHVyZSwgd2hpY2ggbWlnaHQgaW5mbHVlbmNlIHJlcHJvZHVjaWJpbGl0eSBvZiBvdXIgcmVzdWx0cy4KICAgICAgICAgICAgeyUtIGVuZGlmIC0lfQogICAgICAgICAgICA8L3A- #}{%- if nrefDataFixedReply == uuids.nrefDataFixedFixedAUuid -%}<p>This data{{+" "}}
-            
-              are fixed, therefore will not influence reproducibility of our results.
-            
-            </p>{%- elif nrefDataFixedReply == uuids.nrefDataFixedChangeAUuid -%}<p>This data{{+" "}}
-            
-              may change in the future, which might influence reproducibility of our results.
-            
-            </p>{%- endif -%}{# __tr_branch_sentence_original:end #}
+            {# __tr_branch_sentence_original:PHA-VGhpcyBkYXRhe3srIiAifX0KICAgICAgICAgICAgeyUtIGlmIG5yZWZEYXRhRml4ZWRSZXBseSA9PSB1dWlkcy5ucmVmRGF0YUZpeGVkRml4ZWRBVXVpZCAtJX0KICAgICAgICAgICAgICBhcmUgZml4ZWQsIHRoZXJlZm9yZSB3aWxsIG5vdCBpbmZsdWVuY2UgcmVwcm9kdWNpYmlsaXR5IG9mIG91ciByZXN1bHRzLgogICAgICAgICAgICB7JS0gZWxpZiBucmVmRGF0YUZpeGVkUmVwbHkgPT0gdXVpZHMubnJlZkRhdGFGaXhlZENoYW5nZUFVdWlkIC0lfQogICAgICAgICAgICAgIG1heSBjaGFuZ2UgaW4gdGhlIGZ1dHVyZSwgd2hpY2ggbWlnaHQgaW5mbHVlbmNlIHJlcHJvZHVjaWJpbGl0eSBvZiBvdXIgcmVzdWx0cy4KICAgICAgICAgICAgeyUtIGVuZGlmIC0lfQogICAgICAgICAgICA8L3A- #}{%- if nrefDataFixedReply == uuids.nrefDataFixedFixedAUuid -%}<p>This data{{+" "}}are fixed, therefore will not influence reproducibility of our results.</p>{%- elif nrefDataFixedReply == uuids.nrefDataFixedChangeAUuid -%}<p>This data{{+" "}}may change in the future, which might influence reproducibility of our results.</p>{% else %}<p>This data{{+" "}}</p>{%- endif -%}{# __tr_branch_sentence_original:end #}
           {%- endif -%}
 
           {# Licence #}
@@ -575,26 +530,14 @@
     {%- set dataHarmo = [preexistingPath, uuids.preexistingYesAUuid, uuids.dataHarmoQUuid]|reply_path -%}
     {%- set dataHarmoReply = repliesMap [dataHarmo]|reply_str_value -%}
     {%- if dataHarmoReply == uuids.dataHarmoYesAUuid -%}
-      {# __tr_branch_sentence_original:PHA-V2UgbmVlZCB0byBoYXJtb25pemUgZGlmZmVyZW50IHNvdXJjZXMgb2YgZXhpc3RpbmcgZGF0YSBiZWZvcmUgcmV1c2luZyB0aGVtCiAgICAgIHslLSBzZXQgZGF0YUhhcm1vbkF2YWlsYWJsZSA9IFtkYXRhSGFybW8sIHV1aWRzLmRhdGFIYXJtb1llc0FVdWlkLCB1dWlkcy5kYXRhSGFybW9PdGhlcnNRVXVpZF18cmVwbHlfcGF0aCAgLSV9CiAgICAgIHslLSBzZXQgZGF0YUhhcm1vbkF2YWlsYWJsZVJlcGx5ID0gcmVwbGllc01hcFtkYXRhSGFybW9uQXZhaWxhYmxlXXxyZXBseV9zdHJfdmFsdWUgLSV9CiAgICAgIHslLSBpZiBkYXRhSGFybW9uQXZhaWxhYmxlUmVwbHkgPT0gdXVpZHMuZGF0YUhhcm1vT3RoZXJzWWVzQVV1aWQgLSV9CiAgICAgICAge3srIiAifX1hbmQgd2Ugd2lsbCBtYWtlIHRoaXMgaGFybW9uaXphdGlvbiByZXN1bHRzIGF2YWlsYWJsZSB0byBvdGhlcnMKICAgICAgeyUtIGVsaWYgZGF0YUhhcm1vbkF2YWlsYWJsZVJlcGx5ID09IHV1aWRzLmRhdGFIYXJtb090aGVyc05vQVV1aWQgLSV9CiAgICAgICAge3srIiAifX1idXQgd2Ugd29uJ3QgbWFrZSB0aGlzIGhhcm1vbml6YXRpb24gcmVzdWx0cyBhdmFpbGFibGUgdG8gb3RoZXJzCiAgICAgIHslLSBlbmRpZiAtJX0KICAgICAgLjwvcD4= #}{%- if dataHarmonAvailableReply == uuids.dataHarmoOthersYesAUuid -%}{# __tr_block_0021:start #}<p>We need to harmonize different sources of existing data before reusing them
-      {%- set dataHarmonAvailable = [dataHarmo, uuids.dataHarmoYesAUuid, uuids.dataHarmoOthersQUuid]|reply_path  -%}
-      {%- set dataHarmonAvailableReply = repliesMap[dataHarmonAvailable]|reply_str_value -%}
-      
-        {{+" "}}and we will make this harmonization results available to others
-      
-      .</p>{# __tr_block_0021:end #}{%- elif dataHarmonAvailableReply == uuids.dataHarmoOthersNoAUuid -%}{# __tr_block_0022:start #}<p>We need to harmonize different sources of existing data before reusing them
-      {%- set dataHarmonAvailable = [dataHarmo, uuids.dataHarmoYesAUuid, uuids.dataHarmoOthersQUuid]|reply_path  -%}
-      {%- set dataHarmonAvailableReply = repliesMap[dataHarmonAvailable]|reply_str_value -%}
-      
-        {{+" "}}but we won't make this harmonization results available to others
-      
-      .</p>{# __tr_block_0022:end #}{%- endif -%}{# __tr_branch_sentence_original:end #}
+      {# __tr_branch_sentence_original:PHA-V2UgbmVlZCB0byBoYXJtb25pemUgZGlmZmVyZW50IHNvdXJjZXMgb2YgZXhpc3RpbmcgZGF0YSBiZWZvcmUgcmV1c2luZyB0aGVtCiAgICAgIHslLSBzZXQgZGF0YUhhcm1vbkF2YWlsYWJsZSA9IFtkYXRhSGFybW8sIHV1aWRzLmRhdGFIYXJtb1llc0FVdWlkLCB1dWlkcy5kYXRhSGFybW9PdGhlcnNRVXVpZF18cmVwbHlfcGF0aCAgLSV9CiAgICAgIHslLSBzZXQgZGF0YUhhcm1vbkF2YWlsYWJsZVJlcGx5ID0gcmVwbGllc01hcFtkYXRhSGFybW9uQXZhaWxhYmxlXXxyZXBseV9zdHJfdmFsdWUgLSV9CiAgICAgIHslLSBpZiBkYXRhSGFybW9uQXZhaWxhYmxlUmVwbHkgPT0gdXVpZHMuZGF0YUhhcm1vT3RoZXJzWWVzQVV1aWQgLSV9CiAgICAgICAge3srIiAifX1hbmQgd2Ugd2lsbCBtYWtlIHRoaXMgaGFybW9uaXphdGlvbiByZXN1bHRzIGF2YWlsYWJsZSB0byBvdGhlcnMKICAgICAgeyUtIGVsaWYgZGF0YUhhcm1vbkF2YWlsYWJsZVJlcGx5ID09IHV1aWRzLmRhdGFIYXJtb090aGVyc05vQVV1aWQgLSV9CiAgICAgICAge3srIiAifX1idXQgd2Ugd29uJ3QgbWFrZSB0aGlzIGhhcm1vbml6YXRpb24gcmVzdWx0cyBhdmFpbGFibGUgdG8gb3RoZXJzCiAgICAgIHslLSBlbmRpZiAtJX0KICAgICAgLjwvcD4= #}{%- set dataHarmonAvailable = [dataHarmo, uuids.dataHarmoYesAUuid, uuids.dataHarmoOthersQUuid]|reply_path  -%}{%- set dataHarmonAvailableReply = repliesMap[dataHarmonAvailable]|reply_str_value -%}{%- if dataHarmonAvailableReply == uuids.dataHarmoOthersYesAUuid -%}{# __tr_block_0021:start #}<p>We need to harmonize different sources of existing data before reusing them{{+" "}}and we will make this harmonization results available to others.</p>{# __tr_block_0021:end #}{%- elif dataHarmonAvailableReply == uuids.dataHarmoOthersNoAUuid -%}{# __tr_block_0022:start #}<p>We need to harmonize different sources of existing data before reusing them{{+" "}}but we won't make this harmonization results available to others.</p>{# __tr_block_0022:end #}{% else %}{# __tr_block_0023:start #}<p>We need to harmonize different sources of existing data before reusing them.</p>{# __tr_block_0023:end #}{%- endif -%}{# __tr_branch_sentence_original:end #}
     {%- endif -%}
 
     {# Constrains - (Re)made data computer readable #}
     {%- set dataCompRead = [preexistingPath, uuids.preexistingYesAUuid, uuids.dataCompReadQUuid]|reply_path -%}
     {%- set dataCompReadReply = repliesMap[dataCompRead]|reply_str_value -%}
     {%- if dataCompReadReply == uuids.dataCompReadYesAUuid -%}
-      {# __tr_block_0023:start #}<p>We will need to (re-)made the data into computer readable form before their using
+      {# __tr_block_0024:start #}<p>We will need to (re-)made the data into computer readable form before their using
 
       {%- set dataCompReadItself = [dataCompRead, uuids.dataCompReadYesAUuid, uuids.dataCompReadItselfQUuid]|reply_path -%}
       {%- set dataCompReadItselfReply = repliesMap[dataCompReadItself]|reply_str_value -%}
@@ -632,7 +575,7 @@
         {%- endif -%}
           
       {%- endif -%}
-      </p>{# __tr_block_0023:end #}
+      </p>{# __tr_block_0024:end #}
     {%- endif -%}
     
 
@@ -645,18 +588,18 @@
       {%- set provenancePath = [metadataPath, uuids.metadataExploreAUuid, uuids.provenanceQUuid]|reply_path -%}
       {%- set provenanceAUuid = repliesMap[provenancePath]|reply_str_value -%}
       {%- if provenanceAUuid %}
-      {# __tr_block_0024:start #}<h4>Provenance</h4>{# __tr_block_0024:end #}
+      {# __tr_block_0025:start #}<h4>Provenance</h4>{# __tr_block_0025:end #}
       {%- if provenanceAUuid == uuids.provenanceLabNotebooksAUuid -%}
-        {# __tr_block_0025:start #}<p>We will use lab notebooks to make sure that there is good provenance of the data analysis.</p>{# __tr_block_0025:end #}
+        {# __tr_block_0026:start #}<p>We will use lab notebooks to make sure that there is good provenance of the data analysis.</p>{# __tr_block_0026:end #}
       {%- elif provenanceAUuid == uuids.provenanceELabNotebookAUuid -%}
-        {# __tr_block_0026:start #}<p>We will use an electronic lab notebook to make sure that there is good provenance of the data analysis.</p>{# __tr_block_0026:end #}
+        {# __tr_block_0027:start #}<p>We will use an electronic lab notebook to make sure that there is good provenance of the data analysis.</p>{# __tr_block_0027:end #}
       {%- elif provenanceAUuid == uuids.provenanceSystemAUuid -%}
-        {# __tr_block_0027:start #}<p>Our computing workflow system keeps provenance information about the data analysis.</p>{# __tr_block_0027:end #}
+        {# __tr_block_0028:start #}<p>Our computing workflow system keeps provenance information about the data analysis.</p>{# __tr_block_0028:end #}
       {%- elif provenanceAUuid == uuids.provenanceOtherAUuid -%}
         {%- set provenanceOtherPath = [provenancePath, uuids.provenanceOtherAUuid, uuids.provenanceOtherQUuid]|reply_path -%}
         {%- set provenanceOther = repliesMap[provenanceOtherPath]|reply_str_value -%}
-        <p>{# __tr_block_0028:start #}We will use other solution than (electronic) lab notebooks to make sure that there is good provenance of the data analysis{{ ": " ~ provenanceOther|dot if provenanceOther else "." }}
-      {# __tr_block_0028:end #}{%- endif -%}
+        <p>{# __tr_block_0029:start #}We will use other solution than (electronic) lab notebooks to make sure that there is good provenance of the data analysis{{ ": " ~ provenanceOther|dot if provenanceOther else "." }}
+      {# __tr_block_0029:end #}{%- endif -%}
       {%- endif -%}
     {%- endif -%}
   </div>

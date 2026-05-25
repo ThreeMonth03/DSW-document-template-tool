@@ -182,6 +182,7 @@ class BranchRewriteBranch:
     opener_text: str
     start: int
     end: int
+    rstrip_body: bool
 
 
 @dataclass(frozen=True)
@@ -634,6 +635,7 @@ def _rewrite_single_alternative_branch_group(
 
     prefix = inner_text[: group.start]
     suffix = inner_text[group.end :]
+    setup_prefix, visible_prefix = _split_rewrite_setup_blocks(prefix)
     prefix_has_text = _contains_translatable_text(prefix)
     suffix_has_words = bool(_visible_words(suffix))
     if not prefix_has_text and not suffix_has_words:
@@ -648,14 +650,39 @@ def _rewrite_single_alternative_branch_group(
     ):
         return None
 
+    suffix_after_group = (
+        suffix.lstrip() if _jinja_block_trims_following_whitespace(group.end_text) else suffix
+    )
     rewritten_parts: list[str] = []
+    rewritten_parts.append(setup_prefix)
     for branch in group.branches:
+        branch_prefix = (
+            visible_prefix.rstrip()
+            if _jinja_block_trims_previous_whitespace(branch.opener_text)
+            else visible_prefix
+        )
         branch_body = inner_text[branch.start : branch.end]
+        if _jinja_block_trims_following_whitespace(branch.opener_text):
+            branch_body = branch_body.lstrip()
+        if branch.rstrip_body:
+            branch_body = branch_body.rstrip()
         rewritten_parts.append(branch.opener_text)
         rewritten_parts.append(opening_tag)
-        rewritten_parts.append(prefix)
+        rewritten_parts.append(branch_prefix)
         rewritten_parts.append(branch_body)
-        rewritten_parts.append(suffix)
+        rewritten_parts.append(suffix_after_group)
+        rewritten_parts.append(closing_tag)
+    if not any(_jinja_block_keyword(branch.opener_text) == "else" for branch in group.branches):
+        fallback_opener = group.branches[0].opener_text
+        fallback_prefix = (
+            visible_prefix.rstrip()
+            if _jinja_block_trims_previous_whitespace(fallback_opener)
+            else visible_prefix
+        )
+        rewritten_parts.append("{% else %}")
+        rewritten_parts.append(opening_tag)
+        rewritten_parts.append(fallback_prefix)
+        rewritten_parts.append(suffix_after_group)
         rewritten_parts.append(closing_tag)
     rewritten_parts.append(group.end_text)
     return "".join(rewritten_parts)
@@ -682,6 +709,7 @@ def _rewrite_single_choice_optional_branch_groups(
 
     prefix = inner_text[: groups[0].start]
     suffix = inner_text[groups[-1].end :]
+    setup_prefix, visible_prefix = _split_rewrite_setup_blocks(prefix)
     if not _contains_translatable_text(prefix) or not _visible_words(suffix):
         return None
     if _visible_text_for_rewrite(prefix).rstrip().endswith((".", "!", "?", ":", ";")):
@@ -700,19 +728,79 @@ def _rewrite_single_choice_optional_branch_groups(
         return None
 
     rewritten_parts: list[str] = []
+    rewritten_parts.append(setup_prefix)
     for index, group in enumerate(groups):
         branch = group.branches[0]
+        branch_prefix = (
+            visible_prefix.rstrip()
+            if _jinja_block_trims_previous_whitespace(branch.opener_text)
+            else visible_prefix
+        )
         branch_body = inner_text[branch.start : branch.end]
+        if _jinja_block_trims_following_whitespace(branch.opener_text):
+            branch_body = branch_body.lstrip()
+        if branch.rstrip_body:
+            branch_body = branch_body.rstrip()
+        suffix_after_group = (
+            suffix.lstrip() if _jinja_block_trims_following_whitespace(group.end_text) else suffix
+        )
         rewritten_parts.append(branch.opener_text)
         rewritten_parts.append(opening_tag)
-        rewritten_parts.append(prefix)
+        rewritten_parts.append(branch_prefix)
         rewritten_parts.append("".join(gaps[:index]))
         rewritten_parts.append(branch_body)
         rewritten_parts.append("".join(gaps[index:]))
-        rewritten_parts.append(suffix)
+        rewritten_parts.append(suffix_after_group)
         rewritten_parts.append(closing_tag)
         rewritten_parts.append(group.end_text)
     return "".join(rewritten_parts)
+
+
+def _split_rewrite_setup_blocks(prefix: str) -> tuple[str, str]:
+    """Move non-rendering setup blocks before rewritten branch conditions.
+
+    Some upstream sentences compute a branch selector inside the HTML tag, after
+    a shared text prefix. If we duplicate that sentence into if/elif branches,
+    the selector must be evaluated before the rewritten branch opener.
+    """
+
+    tokens = _lex_source_tokens(prefix)
+    setup_parts: list[str] = []
+    visible_parts: list[str] = []
+    cursor = 0
+
+    for token in tokens:
+        if token.kind == "jinja_block" and _is_rewrite_setup_block(token.text):
+            segment = prefix[cursor : token.start]
+            if _jinja_block_trims_previous_whitespace(token.text):
+                segment = segment.rstrip()
+            visible_parts.append(segment)
+            setup_parts.append(token.text)
+            cursor = token.end
+            if _jinja_block_trims_following_whitespace(token.text):
+                while cursor < len(prefix) and prefix[cursor].isspace():
+                    cursor += 1
+
+    visible_parts.append(prefix[cursor:])
+    return "".join(setup_parts), "".join(visible_parts)
+
+
+def _is_rewrite_setup_block(token_text: str) -> bool:
+    inner = _jinja_block_inner(token_text)
+    keyword = inner.split(None, 1)[0] if inner else ""
+    if keyword == "do":
+        return True
+    if keyword == "set":
+        return "=" in inner
+    return False
+
+
+def _jinja_block_trims_following_whitespace(token_text: str) -> bool:
+    return token_text.rstrip().endswith("-%}")
+
+
+def _jinja_block_trims_previous_whitespace(token_text: str) -> bool:
+    return token_text.startswith("{%-")
 
 
 def _restore_branch_sentence_rewrites(source_text: str) -> str:
@@ -786,6 +874,7 @@ def _parse_branch_rewrite_group(
                         opener_text=branch_opener,
                         start=branch_start,
                         end=token.start,
+                        rstrip_body=token.text.startswith("{%-"),
                     )
                 )
                 if require_alternatives and not has_alternatives:
@@ -807,6 +896,7 @@ def _parse_branch_rewrite_group(
                     opener_text=branch_opener,
                     start=branch_start,
                     end=token.start,
+                    rstrip_body=token.text.startswith("{%-"),
                 )
             )
             branch_opener = token.text

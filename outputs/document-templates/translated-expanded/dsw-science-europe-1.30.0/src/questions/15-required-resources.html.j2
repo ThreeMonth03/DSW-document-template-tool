@@ -113,20 +113,11 @@
                         
                         {%- if projectCostItemAllocations|length > 0 -%}
                           {# __tr_branch_sentence_original:PHA-CiAgICAgICAgICAgICAgICAgICAgICAgICAgICBUaGlzIHJlc291cmNlIGlzIGFsbG9jYXRlZCBmb3J7eysiICJ9fQogICAgICAgICAgICAgICAgICAgICAgICAgICAgeyUtIGlmIHByb2plY3RDb3N0SXRlbUFsbG9jYXRpb25zfGxlbmd0aCA-IDIgLSV9CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHt7IHByb2plY3RDb3N0SXRlbUFsbG9jYXRpb25zWzA6LTFdfGpvaW4oIiwgIikgfX0sIGFuZCB7eyBwcm9qZWN0Q29zdEl0ZW1BbGxvY2F0aW9uc1stMV0gfX0gb2YgZGF0YS4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIHslLSBlbGlmIHByb2plY3RDb3N0SXRlbUFsbG9jYXRpb25zfGxlbmd0aCA9PSAyIC0lfQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7eyBwcm9qZWN0Q29zdEl0ZW1BbGxvY2F0aW9uc1swXSB9fSBhbmQge3sgcHJvamVjdENvc3RJdGVtQWxsb2NhdGlvbnNbMV0gfX0gb2YgZGF0YS4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIHslLSBlbHNlIC0lfQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7eyBwcm9qZWN0Q29zdEl0ZW1BbGxvY2F0aW9uc1swXSB9fSBvZiBkYXRhLgogICAgICAgICAgICAgICAgICAgICAgICAgICAgeyUtIGVuZGlmICV9CiAgICAgICAgICAgICAgICAgICAgICAgICAgPC9wPg== #}{%- if projectCostItemAllocations|length > 2 -%}<p>
-                            This resource is allocated for{{+" "}}
-                            
-                              {{ projectCostItemAllocations[0:-1]|join(", ") }}, and {{ projectCostItemAllocations[-1] }} of data.
-                            
+                            This resource is allocated for{{+" "}}{{ projectCostItemAllocations[0:-1]|join(", ") }}, and {{ projectCostItemAllocations[-1] }} of data.
                           </p>{%- elif projectCostItemAllocations|length == 2 -%}<p>
-                            This resource is allocated for{{+" "}}
-                            
-                              {{ projectCostItemAllocations[0] }} and {{ projectCostItemAllocations[1] }} of data.
-                            
+                            This resource is allocated for{{+" "}}{{ projectCostItemAllocations[0] }} and {{ projectCostItemAllocations[1] }} of data.
                           </p>{%- else -%}<p>
-                            This resource is allocated for{{+" "}}
-                            
-                              {{ projectCostItemAllocations[0] }} of data.
-                            
+                            This resource is allocated for{{+" "}}{{ projectCostItemAllocations[0] }} of data.
                           </p>{%- endif %}{# __tr_branch_sentence_original:end #}
                         {%- endif -%}
                        

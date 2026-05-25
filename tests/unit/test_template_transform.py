@@ -242,6 +242,48 @@ def test_expand_rewrites_simple_common_prefix_branches_reversibly(tmp_path: Path
         assert _render_template(expanded_text, context) == _render_template(source_text, context)
 
 
+def test_expand_hoists_setup_blocks_before_rewritten_branch_conditions(tmp_path: Path) -> None:
+    """Setup variables inside a sentence must still exist before rewritten branch checks."""
+
+    compact_dir = tmp_path / "compact"
+    (compact_dir / "src").mkdir(parents=True)
+    _write_minimal_template_json(compact_dir)
+    source_text = """
+{%- if needs_harmonization -%}
+<p>We need to harmonize different sources before reusing them
+{%- set availability = harmonization_available -%}
+{%- if availability == "yes" -%}
+  and we will make the harmonization available to others
+{%- elif availability == "no" -%}
+  but we will not make the harmonization available to others
+{%- endif -%}
+.</p>
+{%- endif -%}
+""".lstrip()
+    (compact_dir / "src" / "index.html.j2").write_text(source_text, encoding="utf-8")
+
+    expanded_dir = tmp_path / "expanded"
+    rebuilt_dir = tmp_path / "rebuilt"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    compact_template_dir(source_dir=expanded_dir, output_dir=rebuilt_dir)
+
+    expanded_text = (expanded_dir / "src" / "index.html.j2").read_text(encoding="utf-8")
+    assert "__tr_branch_sentence_original:" in expanded_text
+    setup_index = expanded_text.index("{%- set availability = harmonization_available -%}")
+    branch_index = expanded_text.index('{%- if availability == "yes" -%}')
+    assert setup_index < branch_index
+    assert snapshot_tree(rebuilt_dir) == snapshot_tree(compact_dir)
+
+    contexts = [
+        {"needs_harmonization": True, "harmonization_available": "yes"},
+        {"needs_harmonization": True, "harmonization_available": "no"},
+        {"needs_harmonization": True, "harmonization_available": ""},
+        {"needs_harmonization": False, "harmonization_available": "yes"},
+    ]
+    for context in contexts:
+        assert _render_template(expanded_text, context) == _render_template(source_text, context)
+
+
 def test_expand_rewrites_simple_common_suffix_branches_reversibly(tmp_path: Path) -> None:
     """Simple prefix alternatives should duplicate a shared suffix."""
 
