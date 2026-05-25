@@ -26,6 +26,7 @@ def test_headless_render_regression_workflow(repo_root: Path) -> None:
     assert "make install-dev" in workflow_text
     assert "make transform" in workflow_text
     assert "make export-translation-tree" in workflow_text
+    assert "make sync-translation-tree" in workflow_text
     assert "git diff --exit-code -- workspace/document-templates/expanded" in workflow_text
     assert "git status --short -- workspace/document-templates/expanded" in workflow_text
     assert "git diff --exit-code -- workspace/document-templates/translation" in workflow_text
@@ -63,3 +64,52 @@ def test_ephemeral_dsw_compose_stack_is_checked_in(repo_root: Path) -> None:
         script_path = repo_root / relative_path
         assert script_path.is_file()
         assert script_path.stat().st_mode & stat.S_IXUSR
+
+
+def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
+    """The copy-paste external workflow should expose path-based translation/output wiring."""
+
+    workflow_path = (
+        repo_root / "examples" / "github-actions" / "document_template_translation_sync.yml"
+    )
+    workflow = load_workflow_yaml(workflow_path)
+    workflow_text = workflow_path.read_text(encoding="utf-8")
+
+    assert workflow["on"]["pull_request"]["branches"] == ["**"]
+    assert workflow["permissions"]["contents"] == "read"
+    assert workflow["env"]["TOOLING_REPOSITORY"] == "ThreeMonth03/DSW-document-template-tool"
+    assert workflow["env"]["TOOLING_REF"] == "ci-ephemeral-dsw-regression"
+    assert workflow["env"]["COMPACT_TEMPLATE_DIR"].startswith(
+        "workspace/document-templates/compact/"
+    )
+    assert workflow["env"]["TRANSLATION_TREE_DIR"].startswith(
+        "workspace/document-templates/translation/"
+    )
+    assert workflow["env"]["TRANSLATED_TEMPLATE_DIR"].startswith(
+        "outputs/document-templates/translated-expanded/"
+    )
+    assert workflow["env"]["PROJECT_REF"] == "workspace/projects/test-project.json"
+    assert workflow["env"]["PROJECT_RENDER_OUTPUT"].startswith("outputs/project-render/")
+    assert "tooling-repo" in workflow_text
+    assert 'src/transform_template.py" expand' in workflow_text
+    assert 'src/translation_tree.py" export' in workflow_text
+    assert 'src/translation_tree.py" sync' in workflow_text
+    assert 'dsw-tdk" package' in workflow_text
+    assert "make start-ci-dsw" in workflow_text
+    assert "src/render_project.py" in workflow_text
+    assert "make ci-dsw-logs" in workflow_text
+    assert "make stop-ci-dsw" in workflow_text
+    assert (
+        'git diff --exit-code -- "$EXPANDED_TEMPLATE_DIR" "$TRANSLATION_TREE_DIR"' in workflow_text
+    )
+    assert "actions/upload-artifact@v4" in workflow_text
+    assert "do not use `git diff` on the zip" in workflow_text
+
+    project_ref_path = repo_root / workflow["env"]["PROJECT_REF"]
+    assert project_ref_path.is_file()
+    project_ref = yaml.safe_load(project_ref_path.read_text(encoding="utf-8"))
+    events_path = project_ref_path.parent / project_ref["events_file"]
+    km_path = project_ref_path.parent / project_ref["knowledge_model_package_id"]
+    assert events_path.is_file()
+    assert km_path.resolve().is_file()
+    assert project_ref["source_project"]["project_uuid"] == "ae12e1c3-d7a9-4185-af97-1c310d7e6aad"

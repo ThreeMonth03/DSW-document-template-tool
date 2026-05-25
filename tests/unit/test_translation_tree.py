@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from dsw_document_template_tool.template_transform import expand_template_dir
 from dsw_document_template_tool.translation_tree import (
+    TranslationTreeError,
     export_translation_tree,
     sync_translation_tree,
 )
@@ -52,6 +55,16 @@ def _extract_sentence_list(markdown_docs: list[str]) -> list[str]:
         sentence_block = before_translation.split("```text\n", 1)[1].rsplit("\n```", 1)[0]
         sentences.append(sentence_block)
     return sentences
+
+
+def _write_translation_block(document_path: Path, translation_text: str) -> None:
+    original_doc = document_path.read_text(encoding="utf-8")
+    empty_translation_block = "\n### Translation (zh_Hant)\n\n~~~jinja\n\n~~~"
+    translated_block = f"\n### Translation (zh_Hant)\n\n~~~jinja\n{translation_text}\n~~~"
+    document_path.write_text(
+        original_doc.replace(empty_translation_block, translated_block),
+        encoding="utf-8",
+    )
 
 
 def test_export_translation_tree_creates_one_document_per_unit(tmp_path: Path) -> None:
@@ -600,6 +613,134 @@ def test_sync_translation_tree_keeps_source_text_when_translation_is_blank(tmp_p
     assert translated_text == original_text
 
 
+def test_sync_translation_tree_restores_translator_placeholders_to_jinja(
+    tmp_path: Path,
+) -> None:
+    """Translator-friendly placeholders should write back as original Jinja variables."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+<p>Available via {{ pid }} for {{ usage }}.</p>
+""",
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+    translated_expanded_dir = tmp_path / "translated-expanded"
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    document_path = next(tree_dir.rglob("translation.md"))
+    _write_translation_block(
+        document_path,
+        "<p>為了 {usage}，可透過 {pid} 取得。</p>",
+    )
+
+    sync_translation_tree(
+        tree_dir=tree_dir,
+        source_dir=expanded_dir,
+        output_dir=translated_expanded_dir,
+    )
+
+    translated_text = (translated_expanded_dir / "src" / "index.html.j2").read_text(
+        encoding="utf-8"
+    )
+    assert "<p>為了 {{ usage }}，可透過 {{ pid }} 取得。</p>" in translated_text
+
+
+def test_sync_translation_tree_rejects_missing_required_placeholder(
+    tmp_path: Path,
+) -> None:
+    """Sync should fail before output generation when a translation drops a variable."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+<p>Available via {{ pid }} for {{ usage }}.</p>
+""",
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+    translated_expanded_dir = tmp_path / "translated-expanded"
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    document_path = next(tree_dir.rglob("translation.md"))
+    _write_translation_block(document_path, "<p>可取得。</p>")
+
+    with pytest.raises(TranslationTreeError, match=r"\{pid\}"):
+        sync_translation_tree(
+            tree_dir=tree_dir,
+            source_dir=expanded_dir,
+            output_dir=translated_expanded_dir,
+        )
+
+    assert translated_expanded_dir.exists() is False
+
+
+def test_sync_translation_tree_rejects_unknown_translator_placeholder(
+    tmp_path: Path,
+) -> None:
+    """Typos such as `{pdi}` should not leak into generated template output."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+<p>Available via {{ pid }}.</p>
+""",
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+    translated_expanded_dir = tmp_path / "translated-expanded"
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    document_path = next(tree_dir.rglob("translation.md"))
+    _write_translation_block(document_path, "<p>可透過 {pdi} 取得。</p>")
+
+    with pytest.raises(TranslationTreeError, match=r"\{pdi\}"):
+        sync_translation_tree(
+            tree_dir=tree_dir,
+            source_dir=expanded_dir,
+            output_dir=translated_expanded_dir,
+        )
+
+
+def test_sync_translation_tree_rejects_unexpected_raw_jinja_placeholder(
+    tmp_path: Path,
+) -> None:
+    """New raw Jinja variables should not be introduced from translation text."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+<p>Available via {{ pid }}.</p>
+""",
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+    translated_expanded_dir = tmp_path / "translated-expanded"
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    document_path = next(tree_dir.rglob("translation.md"))
+    _write_translation_block(
+        document_path,
+        "<p>可透過 {{ pid }} / {{ unexpectedPid }} 取得。</p>",
+    )
+
+    with pytest.raises(TranslationTreeError, match=r"\{unexpectedPid\}"):
+        sync_translation_tree(
+            tree_dir=tree_dir,
+            source_dir=expanded_dir,
+            output_dir=translated_expanded_dir,
+        )
+
+
 def test_export_translation_tree_preserves_existing_translation_text(tmp_path: Path) -> None:
     """Re-export should keep prior translator edits for unchanged unit keys."""
 
@@ -646,3 +787,65 @@ def test_export_translation_tree_preserves_existing_translation_text(tmp_path: P
     assert "<p>你好，世界。</p>" in preserved_doc
     assert "- [x] [file] src/index.html.j2 (1/1)" in outline
     assert "- [x] [unit]" in outline
+
+
+def test_export_translation_tree_recovers_deleted_and_malformed_documents(
+    tmp_path: Path,
+) -> None:
+    """Re-export should rebuild damaged unit files while preserving valid translations."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+<p>Hello world.</p>
+<p>Available via {{ pid }}.</p>
+<p>Goodbye world.</p>
+""",
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    docs = sorted(tree_dir.rglob("translation.md"))
+    assert len(docs) == 3
+    _write_translation_block(docs[0], "<p>你好，世界。</p>")
+    docs[1].write_text("# broken document\n", encoding="utf-8")
+    docs[2].unlink()
+
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    recovered_docs = sorted(tree_dir.rglob("translation.md"))
+    recovered_text = "\n".join(path.read_text(encoding="utf-8") for path in recovered_docs)
+    assert len(recovered_docs) == 3
+    assert "<p>你好，世界。</p>" in recovered_text
+    assert "# broken document" not in recovered_text
+    assert recovered_text.count("### Translation (zh_Hant)") == 3
+
+
+def test_sync_translation_tree_reports_deleted_translation_document(
+    tmp_path: Path,
+) -> None:
+    """Sync should fail with a recovery hint when a unit file is missing."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+<p>Hello world.</p>
+""",
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+    translated_expanded_dir = tmp_path / "translated-expanded"
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+    next(tree_dir.rglob("translation.md")).unlink()
+
+    with pytest.raises(TranslationTreeError, match="make export-translation-tree"):
+        sync_translation_tree(
+            tree_dir=tree_dir,
+            source_dir=expanded_dir,
+            output_dir=translated_expanded_dir,
+        )

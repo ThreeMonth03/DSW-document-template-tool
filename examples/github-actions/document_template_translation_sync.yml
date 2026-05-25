@@ -1,0 +1,145 @@
+name: DSW Document Template Translation Sync
+
+on:
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Pin this to a released branch/tag in production.
+  TOOLING_REPOSITORY: ThreeMonth03/DSW-document-template-tool
+  TOOLING_REF: ci-ephemeral-dsw-regression
+
+  # Change only these paths for the host repository.
+  COMPACT_TEMPLATE_DIR: workspace/document-templates/compact/dsw-science-europe-1.30.0
+  EXPANDED_TEMPLATE_DIR: workspace/document-templates/expanded/dsw-science-europe-1.30.0
+  TRANSLATION_TREE_DIR: workspace/document-templates/translation/dsw-science-europe-1.30.0
+  TRANSLATED_TEMPLATE_DIR: outputs/document-templates/translated-expanded/dsw-science-europe-1.30.0
+  TRANSLATED_TEMPLATE_PACKAGE: outputs/document-templates/translated-expanded/dsw-science-europe-1.30.0.zip
+  PROJECT_REF: workspace/projects/test-project.json
+  PROJECT_RENDER_OUTPUT: outputs/project-render/test-project.pdf
+  PROJECT_RENDER_FORMAT_UUID: 68c26e34-5e77-4e15-9bf7-06ff92582257
+
+jobs:
+  translation-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout template repository
+        uses: actions/checkout@v4
+        with:
+          path: template-repo
+
+      - name: Checkout DSW document-template tooling
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TOOLING_REPOSITORY }}
+          ref: ${{ env.TOOLING_REF }}
+          path: tooling-repo
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tooling dependencies
+        working-directory: tooling-repo
+        run: make install-dev BOOTSTRAP_PYTHON=python
+
+      # Keep this step when expanded/translation are checked-in generated inputs.
+      # If another repository only wants to package already-committed translation
+      # edits, it can remove this step and keep only sync/package below.
+      - name: Refresh expanded template and translation tree
+        run: |
+          set -euo pipefail
+          HOST_ROOT="$GITHUB_WORKSPACE/template-repo"
+          TOOL_ROOT="$GITHUB_WORKSPACE/tooling-repo"
+
+          "$TOOL_ROOT/.venv/bin/python" "$TOOL_ROOT/src/transform_template.py" expand \
+            --source "$HOST_ROOT/$COMPACT_TEMPLATE_DIR" \
+            --output "$HOST_ROOT/$EXPANDED_TEMPLATE_DIR"
+
+          "$TOOL_ROOT/.venv/bin/python" "$TOOL_ROOT/src/translation_tree.py" export \
+            --source "$HOST_ROOT/$EXPANDED_TEMPLATE_DIR" \
+            --output "$HOST_ROOT/$TRANSLATION_TREE_DIR"
+
+      - name: Check generated translation inputs are committed
+        working-directory: template-repo
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- "$EXPANDED_TEMPLATE_DIR" "$TRANSLATION_TREE_DIR"
+          test -z "$(git status --short -- "$EXPANDED_TEMPLATE_DIR" "$TRANSLATION_TREE_DIR")"
+
+      - name: Sync translations into output template
+        run: |
+          set -euo pipefail
+          HOST_ROOT="$GITHUB_WORKSPACE/template-repo"
+          TOOL_ROOT="$GITHUB_WORKSPACE/tooling-repo"
+
+          "$TOOL_ROOT/.venv/bin/python" "$TOOL_ROOT/src/translation_tree.py" sync \
+            --tree "$HOST_ROOT/$TRANSLATION_TREE_DIR" \
+            --source "$HOST_ROOT/$EXPANDED_TEMPLATE_DIR" \
+            --output "$HOST_ROOT/$TRANSLATED_TEMPLATE_DIR"
+
+          "$TOOL_ROOT/.venv/bin/dsw-tdk" package "$HOST_ROOT/$TRANSLATED_TEMPLATE_DIR" \
+            --output "$HOST_ROOT/$TRANSLATED_TEMPLATE_PACKAGE" \
+            --force
+
+      # This boots an ephemeral DSW and copies PROJECT_REF into it. PROJECT_REF
+      # can either point at an existing project UUID for a persistent DSW, or at
+      # a JSON recipe with `knowledge_model_package_id` and `events_file`.
+      - name: Start local DSW stack for sample render
+        if: ${{ env.PROJECT_REF != '' }}
+        working-directory: tooling-repo
+        run: make start-ci-dsw
+
+      - name: Render sample project preview
+        if: ${{ env.PROJECT_REF != '' }}
+        env:
+          DSW_API_URL: http://localhost:3000/wizard-api
+          DSW_EMAIL: albert.einstein@example.com
+          DSW_PASSWORD: password
+          DSW_DOWNLOAD_HOST_ALIAS: host.docker.internal=localhost
+        run: |
+          set -euo pipefail
+          HOST_ROOT="$GITHUB_WORKSPACE/template-repo"
+          TOOL_ROOT="$GITHUB_WORKSPACE/tooling-repo"
+
+          "$TOOL_ROOT/.venv/bin/python" "$TOOL_ROOT/src/render_project.py" \
+            --project-ref "$HOST_ROOT/$PROJECT_REF" \
+            --template-dir "$HOST_ROOT/$TRANSLATED_TEMPLATE_DIR" \
+            --format-uuid "$PROJECT_RENDER_FORMAT_UUID" \
+            --output "$HOST_ROOT/$PROJECT_RENDER_OUTPUT" \
+            --tdk-executable "$TOOL_ROOT/.venv/bin/dsw-tdk"
+
+      - name: Collect local DSW logs
+        if: ${{ always() && env.PROJECT_REF != '' }}
+        working-directory: tooling-repo
+        run: make ci-dsw-logs
+
+      - name: Stop local DSW stack
+        if: ${{ always() && env.PROJECT_REF != '' }}
+        working-directory: tooling-repo
+        run: make stop-ci-dsw
+
+      # `dsw-tdk package` generates UUID/timestamp metadata inside the zip, so
+      # do not use `git diff` on the zip unless your repo normalizes packages.
+      # If your repo commits the translated-expanded directory, uncomment this:
+      #
+      # - name: Check translated output directory is committed
+      #   working-directory: template-repo
+      #   run: git diff --exit-code -- "$TRANSLATED_TEMPLATE_DIR"
+
+      - name: Upload translated template package
+        uses: actions/upload-artifact@v4
+        with:
+          name: translated-document-template
+          path: |
+            template-repo/${{ env.TRANSLATED_TEMPLATE_DIR }}
+            template-repo/${{ env.TRANSLATED_TEMPLATE_PACKAGE }}
+            template-repo/${{ env.PROJECT_RENDER_OUTPUT }}
+            template-repo/${{ env.PROJECT_RENDER_OUTPUT }}.json
+            tooling-repo/outputs/ci-dsw/

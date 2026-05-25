@@ -34,7 +34,7 @@ rather than `{% set %}` captures, so they do not change Jinja variable scope.
 
 The checked-in `translation` tree is the human-facing collaboration layer.
 It exports one `translation.md` file per preserved translation unit, with separate
-`Source (en)` and `Translation (zh_Hant)` sections, and can sync translator
+`Sentence (en)` and `Translation (zh_Hant)` sections, and can sync translator
 edits back into a generated `expanded` template copy.
 
 That makes the template reversible:
@@ -43,6 +43,32 @@ That makes the template reversible:
 - `expanded` -> `translation` with `make export-translation-tree`
 - `translation` -> translated `expanded` with `make sync-translation-tree`
 - `expanded` -> uploadable `compact` output with `make compact-template`
+
+For external repositories, copy the workflow template from:
+
+- `examples/github-actions/document_template_translation_sync.yml`
+
+That example checks out this tooling repo separately, refreshes the host repo's
+`expanded` and `translation` paths, syncs translations into an `outputs/` template
+directory, packages it with `dsw-tdk`, and uploads the translated template as a
+GitHub Actions artifact.
+
+The `expand` and `export translation tree` steps in that example are guards for
+repositories that commit generated translation inputs. If your repository only
+wants to build output from already-committed translations, the minimal path is:
+
+- `translation` -> translated `expanded` with `src/translation_tree.py sync`
+- package the translated template with `dsw-tdk package`
+
+The example also shows how to render one preview document in CI. Put a portable
+project reference like `workspace/projects/test-project.json` in the host repo,
+next to a sanitized replayable event export such as
+`workspace/projects/test-project.events.json`. The reference points at a local
+knowledge-model bundle with `knowledge_model_package_id` and at the project
+events with `events_file`; optional `source_project` metadata records where the
+fixture was exported from. In GitHub Actions, this boots an ephemeral local DSW,
+creates a temporary project from the event payload, renders the translated
+template, and uploads the resulting PDF artifact.
 
 ### Supported Regression Modes
 
@@ -157,7 +183,7 @@ This exports one `translation.md` file per preserved translation unit under
 
 Each translation file contains:
 
-- machine-exported source Jinja in `Source (en)`
+- a readable source sentence in `Sentence (en)`
 - translator-edited target Jinja in `Translation (zh_Hant)`
 - metadata linking the unit back to its source file and wrapper
 

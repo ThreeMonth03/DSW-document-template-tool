@@ -31,8 +31,9 @@ def test_render_project_help(repo_root) -> None:
         check=False,
     )
     assert result.returncode == 0
-    assert "existing filled DSW project" in result.stdout
+    assert "existing or fixture DSW project" in result.stdout
     assert "--project-uuid" in result.stdout
+    assert "--keep-created-project" in result.stdout
 
 
 def test_transform_template_help(repo_root) -> None:

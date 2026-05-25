@@ -9,6 +9,7 @@ import json
 import os
 import re
 import shutil
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -54,6 +55,7 @@ HTML_CONTEXT_BOUNDARY_PATTERN = re.compile(
     r"</(?:p|li|h[1-6]|dt|dd|th|td|caption|div|ul|ol|table|tr)>|<br\s*/?>",
     re.IGNORECASE,
 )
+TRANSLATOR_PLACEHOLDER_PATTERN = re.compile(r"(?<!\{)\{(?P<name>[A-Za-z_][A-Za-z0-9_.]*)\}(?!\})")
 VISIBLE_TEXT_PATTERN = re.compile(r"[A-Za-z0-9]+")
 CONNECTOR_ONLY_WORDS = {
     "a",
@@ -272,9 +274,6 @@ def sync_translation_tree(
         target_lang=target_lang,
     )
 
-    _reset_dir(output_dir)
-    shutil.copytree(source_dir, output_dir, dirs_exist_ok=True)
-
     units_by_file: dict[str, list[dict[str, str | int]]] = {}
     for unit in units:
         source_file = unit["source_file"]
@@ -284,10 +283,11 @@ def sync_translation_tree(
             )
         units_by_file.setdefault(source_file, []).append(unit)
 
+    translated_files: dict[str, str] = {}
     for source_file, file_units in units_by_file.items():
-        destination_path = output_dir / source_file
-        destination_text = destination_path.read_text(encoding="utf-8")
-        wrapper_matches = list(GENERATED_BLOCK_PATTERN.finditer(destination_text))
+        source_path = source_dir / source_file
+        source_text = source_path.read_text(encoding="utf-8")
+        wrapper_matches = list(GENERATED_BLOCK_PATTERN.finditer(source_text))
 
         units_by_wrapper: dict[int, list[dict[str, str | int]]] = {}
         for unit in file_units:
@@ -301,7 +301,7 @@ def sync_translation_tree(
         rebuilt_parts: list[str] = []
         cursor = 0
         for wrapper_order, match in enumerate(wrapper_matches, start=1):
-            rebuilt_parts.append(destination_text[cursor : match.start()])
+            rebuilt_parts.append(source_text[cursor : match.start()])
 
             wrapper_units = units_by_wrapper.get(wrapper_order)
             if not wrapper_units:
@@ -352,8 +352,13 @@ def sync_translation_tree(
                 f"{source_file}: {unknown_wrapper_orders}"
             )
 
-        rebuilt_parts.append(destination_text[cursor:])
-        destination_path.write_text("".join(rebuilt_parts), encoding="utf-8")
+        rebuilt_parts.append(source_text[cursor:])
+        translated_files[source_file] = "".join(rebuilt_parts)
+
+    _reset_dir(output_dir)
+    shutil.copytree(source_dir, output_dir, dirs_exist_ok=True)
+    for source_file, translated_text in translated_files.items():
+        (output_dir / source_file).write_text(translated_text, encoding="utf-8")
 
     return output_dir
 
@@ -1045,11 +1050,117 @@ def _apply_unit_translations(
 
         rebuilt_parts.append(wrapper_body[cursor:unit_start])
         translation_text = translations.get((source_file, unit_key)) or source_unit_text
+        if translation_text.strip():
+            _validate_translation_placeholders(
+                source_file=source_file,
+                unit_key=unit_key,
+                source_text=source_unit_text,
+                translation_text=translation_text,
+            )
+            translation_text = _materialize_translation_placeholders(
+                source_text=source_unit_text,
+                translation_text=translation_text,
+            )
         rebuilt_parts.append(translation_text)
         cursor = unit_end
 
     rebuilt_parts.append(wrapper_body[cursor:])
     return "".join(rebuilt_parts)
+
+
+def _validate_translation_placeholders(
+    *,
+    source_file: str,
+    unit_key: str,
+    source_text: str,
+    translation_text: str,
+) -> None:
+    source_counts = _source_placeholder_counts(source_text)
+    if not source_counts and not _extract_translator_placeholder_names(translation_text):
+        return
+
+    placeholder_map = _build_source_placeholder_map(source_text)
+    shorthand_names = _extract_translator_placeholder_names(translation_text)
+    unknown_shorthand_names = sorted(set(shorthand_names) - set(placeholder_map))
+    if unknown_shorthand_names:
+        formatted_names = ", ".join(f"{{{name}}}" for name in unknown_shorthand_names)
+        raise TranslationTreeError(
+            "Translation uses placeholder names that cannot be mapped back to Jinja "
+            f"for {source_file} ({unit_key}): {formatted_names}"
+        )
+
+    translation_counts = _translation_placeholder_counts(translation_text)
+    unexpected_placeholder_names = sorted(set(translation_counts) - set(source_counts))
+    if unexpected_placeholder_names:
+        formatted_names = ", ".join(f"{{{name}}}" for name in unexpected_placeholder_names)
+        raise TranslationTreeError(
+            "Translation introduces placeholders that are not present in the source for "
+            f"{source_file} ({unit_key}): {formatted_names}"
+        )
+
+    missing_counts = source_counts - translation_counts
+    if missing_counts:
+        formatted_names = ", ".join(
+            f"{{{name}}}" if count == 1 else f"{{{name}}} x{count}"
+            for name, count in sorted(missing_counts.items())
+        )
+        raise TranslationTreeError(
+            "Translation is missing required placeholders for "
+            f"{source_file} ({unit_key}): {formatted_names}"
+        )
+
+
+def _source_placeholder_counts(source_text: str) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    for match in JINJA_EXPR_PATTERN.finditer(source_text):
+        for name in _extract_translator_placeholder_names(
+            _jinja_expr_to_placeholder(match.group("expr"))
+        ):
+            counts[name] += 1
+    return counts
+
+
+def _translation_placeholder_counts(translation_text: str) -> Counter[str]:
+    counts: Counter[str] = Counter(_extract_translator_placeholder_names(translation_text))
+    for match in JINJA_EXPR_PATTERN.finditer(translation_text):
+        for name in _extract_translator_placeholder_names(
+            _jinja_expr_to_placeholder(match.group("expr"))
+        ):
+            counts[name] += 1
+    return counts
+
+
+def _build_source_placeholder_map(source_text: str) -> dict[str, str]:
+    expressions_by_name: dict[str, set[str]] = {}
+    for match in JINJA_EXPR_PATTERN.finditer(source_text):
+        expression = " ".join(match.group("expr").strip().split())
+        placeholder_names = _extract_translator_placeholder_names(
+            _jinja_expr_to_placeholder(match.group("expr"))
+        )
+        for name in placeholder_names:
+            expressions_by_name.setdefault(name, set()).add(expression)
+    return {
+        name: next(iter(expressions))
+        for name, expressions in expressions_by_name.items()
+        if len(expressions) == 1
+    }
+
+
+def _extract_translator_placeholder_names(source_text: str) -> list[str]:
+    return [match.group("name") for match in TRANSLATOR_PLACEHOLDER_PATTERN.finditer(source_text)]
+
+
+def _materialize_translation_placeholders(*, source_text: str, translation_text: str) -> str:
+    placeholder_map = _build_source_placeholder_map(source_text)
+
+    def replace_placeholder(match: re.Match[str]) -> str:
+        name = match.group("name")
+        expression = placeholder_map.get(name)
+        if expression is None:
+            return match.group(0)
+        return "{{ " + expression + " }}"
+
+    return TRANSLATOR_PLACEHOLDER_PATTERN.sub(replace_placeholder, translation_text)
 
 
 def _build_wrapper_key(*, relative_path: str, source_text: str) -> str:
@@ -1217,11 +1328,14 @@ def _load_existing_translations(
         document_path = output_dir / document_path_raw
         if not document_path.is_file():
             continue
-        translation_text = _parse_translation_document(
-            document_path=document_path,
-            source_lang=source_lang,
-            target_lang=target_lang,
-        )
+        try:
+            translation_text = _parse_translation_document(
+                document_path=document_path,
+                source_lang=source_lang,
+                target_lang=target_lang,
+            )
+        except TranslationTreeError:
+            continue
         translations[(source_file, unit_key)] = translation_text
     return translations
 
@@ -1252,6 +1366,11 @@ def _load_translations_by_unit_key(
                 f"Invalid translation-tree manifest entry at {tree_dir / TREE_MANIFEST_PATH}"
             )
         document_path = tree_dir / document_path_raw
+        if not document_path.is_file():
+            raise TranslationTreeError(
+                f"Missing translation document at {document_path}. "
+                "Run `make export-translation-tree` to restore it."
+            )
         translation_text = _parse_translation_document(
             document_path=document_path,
             source_lang=source_lang,
@@ -1282,7 +1401,11 @@ def _build_tree_readme(*, source_lang: str, target_lang: str) -> str:
             "- Wrapper-level blocks from the expanded workspace are split into smaller",
             "  translator-facing units whenever the source structure allows it.",
             f"- Edit only `Translation ({target_lang})` sections.",
+            "- Keep every `{placeholder}` shown in the sentence. You may reorder",
+            "  placeholders for grammar; sync converts them back to Jinja variables.",
             "- Source hashes in the metadata are machine guards; do not edit them.",
+            "- If a translation file is deleted or its markdown block is broken, run",
+            "  `make export-translation-tree` to rebuild the file skeleton.",
             "- Run `make sync-translation-tree` to apply translator edits back into a",
             "  generated template copy.",
             "",

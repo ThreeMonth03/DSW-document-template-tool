@@ -38,6 +38,9 @@ jobs:
           git diff --exit-code -- workspace/document-templates/translation
           test -z "$(git status --short -- workspace/document-templates/translation)"
 
+      - name: Validate translation tree sync
+        run: make sync-translation-tree
+
       - name: Verify checked-in template workspaces
         run: make verify-workspace
 
