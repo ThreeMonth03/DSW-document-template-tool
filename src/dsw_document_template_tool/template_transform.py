@@ -912,21 +912,25 @@ def _rewrite_inner_common_prefix_branch(
     inner_tokens = _lex_source_tokens(inner_text)
     groups = _collect_top_level_branch_rewrite_groups(tokens=inner_tokens)
     if len(groups) == 1:
-        return _rewrite_single_alternative_branch_group(
+        rewritten_group = _rewrite_single_alternative_branch_group(
             inner_text=inner_text,
             opening_tag=opening_tag,
             closing_tag=closing_tag,
             group=groups[0],
         )
+        if rewritten_group is not None:
+            return rewritten_group
 
     optional_groups = _collect_top_level_optional_rewrite_groups(tokens=inner_tokens)
     if len(optional_groups) == 1:
-        return _rewrite_single_alternative_branch_group(
+        rewritten_group = _rewrite_single_alternative_branch_group(
             inner_text=inner_text,
             opening_tag=opening_tag,
             closing_tag=closing_tag,
             group=optional_groups[0],
         )
+        if rewritten_group is not None:
+            return rewritten_group
 
     rewritten_single_choice = _rewrite_single_choice_optional_branch_groups(
         inner_text=inner_text,

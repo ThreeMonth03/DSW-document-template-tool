@@ -344,14 +344,10 @@
         {%- if nrefDataUseReply == uuids.nrefDataUseYesAUuid %}
 
           {# identification #}
-          <p>We will re-use this non-referece data 
-          {%- if nrefDataWhere -%}{# __tr_branch_sentence_original:CiAgICAgICAgIHt7IiAifX0gYXZhaWxhYmxlIHZpYTp7eyIgIn19CiAgICAgICAgICAgIHslLSBpZiBucmVmRGF0YVdoZXJlLnN0YXJ0c3dpdGgoImh0dHA6Ly8iKSBvciBucmVmRGF0YVdoZXJlLnN0YXJ0c3dpdGgoImh0dHBzOi8vIikgb3IgbnJlZkRhdGFXaGVyZS5zdGFydHN3aXRoKCJmdHA6Ly8iKSAtJX0KICAgICAgICAgICAgICA8YSBocmVmPSJ7eyBucmVmRGF0YVdoZXJlIH19IiB0YXJnZXQ9Il9ibGFuayI-e3sgbnJlZkRhdGFXaGVyZSB9fSA8L2E-LgogICAgICAgICAgICB7JS0gZWxzZSAtJX0KICAgICAgICAgICAgICB7eyBucmVmRGF0YVdoZXJlIH19CiAgICAgICAgICAgIHslLSBlbmRpZiAtJX0K #}
-            {%- if nrefDataWhere.startswith("http://") or nrefDataWhere.startswith("https://") or nrefDataWhere.startswith("ftp://") -%}
-         {{" "}} available via:{{" "}}<a href="{{ nrefDataWhere }}" target="_blank">{{ nrefDataWhere }} </a>.
-            {%- else -%}
-         {{" "}} available via:{{" "}}{{ nrefDataWhere }}
-            {%- endif -%}
-{# __tr_branch_sentence_original:end #}          {%- endif -%}
+          {# __tr_branch_sentence_original:PHA-V2Ugd2lsbCByZS11c2UgdGhpcyBub24tcmVmZXJlY2UgZGF0YSAKICAgICAgICAgIHslLSBpZiBucmVmRGF0YVdoZXJlIC0lfQogICAgICAgICB7eyIgIn19IGF2YWlsYWJsZSB2aWE6e3siICJ9fQogICAgICAgICAgICB7JS0gaWYgbnJlZkRhdGFXaGVyZS5zdGFydHN3aXRoKCJodHRwOi8vIikgb3IgbnJlZkRhdGFXaGVyZS5zdGFydHN3aXRoKCJodHRwczovLyIpIG9yIG5yZWZEYXRhV2hlcmUuc3RhcnRzd2l0aCgiZnRwOi8vIikgLSV9CiAgICAgICAgICAgICAgPGEgaHJlZj0ie3sgbnJlZkRhdGFXaGVyZSB9fSIgdGFyZ2V0PSJfYmxhbmsiPnt7IG5yZWZEYXRhV2hlcmUgfX0gPC9hPi4KICAgICAgICAgICAgeyUtIGVsc2UgLSV9CiAgICAgICAgICAgICAge3sgbnJlZkRhdGFXaGVyZSB9fQogICAgICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAKICAgICAgICAgIHsjIHVzYWdlICN9CiAgICAgICAgICB7JS0gc2V0IG5yZWZEYXRhVXNhZ2VRID0gW25yZWZEYXRhVXNlZFByZWZpeCwgdXVpZHMubnJlZkRhdGFVc2FnZVFVdWlkXXxyZXBseV9wYXRoICAtJX0KICAgICAgICAgIHslLSBzZXQgbnJlZkRhdGFVc2FnZVJlcGx5ID0gcmVwbGllc01hcFtucmVmRGF0YVVzYWdlUV18cmVwbHlfc3RyX3ZhbHVlIC0lfQogICAgICAgICAgeyUtIGlmIG5yZWZEYXRhVXNhZ2VSZXBseSAtJX0KICAgICAgICAgICAge3srIiAifX1pbiBvcmRlciB0byAie3sgbnJlZkRhdGFVc2FnZVJlcGx5fX0iCiAgICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAgICAgICAuPC9wPg== #}<p>We will re-use this non-referece data 
+          {%- if nrefDataWhere -%}{%- if nrefDataWhere.startswith("http://") or nrefDataWhere.startswith("https://") or nrefDataWhere.startswith("ftp://") -%}
+         {{" "}} available via:{{" "}}{{" "}}<a href="{{ nrefDataWhere }}" target="_blank">{{ nrefDataWhere }} </a>.{%- else -%}
+         {{" "}} available via:{{" "}}{{" "}}{{ nrefDataWhere }}{%- endif -%}{%- endif -%}
     
           {# usage #}
           {%- set nrefDataUsageQ = [nrefDataUsedPrefix, uuids.nrefDataUsageQUuid]|reply_path  -%}
@@ -359,7 +355,7 @@
           {%- if nrefDataUsageReply -%}
             {{+" "}}in order to "{{ nrefDataUsageReply}}"
           {%- endif -%}
-          .</p>
+          .</p>{# __tr_branch_sentence_original:end #}
 
           {# Which part of the non-reference data we will use #}
           {%- set nrefDataComplete = [nrefDataUsedPrefix, uuids.nrefDataCompleteQUuid]|reply_path  -%}
@@ -386,30 +382,24 @@
           {%- set nrefDataConditions = [nrefDataUsedPrefix, uuids.nrefDataConditionsQUuid]|reply_path -%}
           {%- set nrefDataConditionsReply = repliesMap[nrefDataConditions]|reply_str_value -%}
           {%- if nrefDataConditionsReply %}
-            <p>This data are{{+" "}}
+            {# __tr_branch_sentence_original:PHA-VGhpcyBkYXRhIGFyZXt7KyIgIn19CiAgICAgICAgICAgIHslLSBpZiBucmVmRGF0YUNvbmRpdGlvbnNSZXBseSA9PSB1dWlkcy5ucmVmRGF0YUNvbmRpdGlvbnNDQzBBVXVpZCAtJX0KICAgICAgICAgICAgICBmcmVlbHkgYXZhaWxhYmxlIGZvciBhbnkgdXNlLgogICAgICAgICAgICB7JS0gZWxpZiBucmVmRGF0YUNvbmRpdGlvbnNSZXBseSA9PSB1dWlkcy5ucmVmRGF0YUNvbmRpdGlvbnNDQ0JZQVV1aWQgLSV9CiAgICAgICAgICAgICAgZnJlZWx5IGF2YWlsYWJsZSB3aXRoIG9ibGlnYXRpb24gdG8gcXVvdGUgdGhlIHNvdXJjZS4KICAgICAgICAgICAgeyUtIGVsaWYgbnJlZkRhdGFDb25kaXRpb25zUmVwbHkgPT0gdXVpZHMubnJlZkRhdGFDb25kaXRpb25zT3RoZXJBVXVpZCAgLSV9CiAgICAgICAgICAgICAgeyUtIHNldCBucmVmRGF0YUNvbmRpdGlvbnNPdGhlciA9IFtucmVmRGF0YUNvbmRpdGlvbnMsIHV1aWRzLm5yZWZEYXRhQ29uZGl0aW9uc090aGVyQVV1aWQsIHV1aWRzLm5yZWZEYXRhQ29uZGl0aW9uc090aGVyUVV1aWRdfHJlcGx5X3BhdGggLSV9CiAgICAgICAgICAgICAgeyUtIHNldCBucmVmRGF0YUNvbmRpdGlvbnNPdGhlclJlcGx5ID0gcmVwbGllc01hcFtucmVmRGF0YUNvbmRpdGlvbnNPdGhlcl18cmVwbHlfc3RyX3ZhbHVlIC0lfQogICAgICAgICAgICAgIHslLSBpZiBucmVmRGF0YUNvbmRpdGlvbnNPdGhlclJlcGx5IC0lfQogICAgICAgICAgICAgICAgYXZhaWxhYmxlIHdpdGh7eyIgIn19CiAgICAgICAgICAgICAgICAgIHslLSBpZiBucmVmRGF0YUNvbmRpdGlvbnNPdGhlclJlcGx5IC0lfQogICAgICAgICAgICAgICAgICAgZm9sbG93aW5nIHJlc3RyaWN0aW9uczogInt7bnJlZkRhdGFDb25kaXRpb25zT3RoZXJSZXBseX19Ii4KICAgICAgICAgICAgICAgICAgeyUtIGVsc2UgLSV9CiAgICAgICAgICAgICAgICAgICAge3siICJ9fXJlc3RyaWN0aW9ucywgdGhhdCB3aWxsIGJlIHNwZWNpZmllZC4KICAgICAgICAgICAgICAgICAgeyUtIGVuZGlmIC0lfQogICAgICAgICAgICAgIHslLSBlbmRpZiAtJX0KICAgICAgICAgICAgeyUtIGVuZGlmIC0lfQogICAgICAgICAgICA8L3A- #}<p>This data are{{+" "}}
             {%- if nrefDataConditionsReply == uuids.nrefDataConditionsCC0AUuid -%}
               freely available for any use.
             {%- elif nrefDataConditionsReply == uuids.nrefDataConditionsCCBYAUuid -%}
               freely available with obligation to quote the source.
-            {%- elif nrefDataConditionsReply == uuids.nrefDataConditionsOtherAUuid  -%}
-              {%- set nrefDataConditionsOther = [nrefDataConditions, uuids.nrefDataConditionsOtherAUuid, uuids.nrefDataConditionsOtherQUuid]|reply_path -%}
-              {%- set nrefDataConditionsOtherReply = repliesMap[nrefDataConditionsOther]|reply_str_value -%}
-              {%- if nrefDataConditionsOtherReply -%}{# __tr_branch_sentence_original:CiAgICAgICAgICAgICAgICBhdmFpbGFibGUgd2l0aHt7IiAifX0KICAgICAgICAgICAgICAgICAgeyUtIGlmIG5yZWZEYXRhQ29uZGl0aW9uc090aGVyUmVwbHkgLSV9CiAgICAgICAgICAgICAgICAgICBmb2xsb3dpbmcgcmVzdHJpY3Rpb25zOiAie3tucmVmRGF0YUNvbmRpdGlvbnNPdGhlclJlcGx5fX0iLgogICAgICAgICAgICAgICAgICB7JS0gZWxzZSAtJX0KICAgICAgICAgICAgICAgICAgICB7eyIgIn19cmVzdHJpY3Rpb25zLCB0aGF0IHdpbGwgYmUgc3BlY2lmaWVkLgogICAgICAgICAgICAgICAgICB7JS0gZW5kaWYgLSV9Cg== #}
-                  {%- if nrefDataConditionsOtherReply -%}
-                available with{{" "}}following restrictions: "{{nrefDataConditionsOtherReply}}".
-                  {%- else -%}
-                available with{{" "}}restrictions, that will be specified.
-                  {%- endif -%}
-{# __tr_branch_sentence_original:end #}              {%- endif -%}
-            {%- endif -%}
-            </p>
+            {%- elif nrefDataConditionsReply == uuids.nrefDataConditionsOtherAUuid  -%}{%- set nrefDataConditionsOther = [nrefDataConditions, uuids.nrefDataConditionsOtherAUuid, uuids.nrefDataConditionsOtherQUuid]|reply_path -%}{%- set nrefDataConditionsOtherReply = repliesMap[nrefDataConditionsOther]|reply_str_value -%}{%- if nrefDataConditionsOtherReply -%}{%- if nrefDataConditionsOtherReply -%}
+                available with{{" "}}{{" "}}following restrictions: "{{nrefDataConditionsOtherReply}}".{%- endif -%}
+            {%- else -%}{%- if nrefDataConditionsOtherReply -%}
+                available with{{" "}}{{" "}}{{" "}}restrictions, that will be specified.{%- endif -%}
+            {%- endif -%}{%- endif -%}
+            </p>{# __tr_branch_sentence_original:end #}
           {%- endif -%}
 
           {# Personal Data #}
           {%- set nrefDataPersonal = [nrefDataUsedPrefix, uuids.nrefDataPersonalQUuid]|reply_path -%}
           {%- set nrefDataPersonalReply = repliesMap[nrefDataPersonal]|reply_str_value -%}
           {%- if nrefDataPersonalReply == uuids.nrefDataPersonalYesAUuid %}
-          <p>
+          {# __tr_branch_sentence_original:PHA-CiAgICAgICAgICAgIFRoaXMgZGF0YSBpbmNsdWRlIHBlcnNvbmFsIGRhdGEKICAgICAgICAgICAgeyUtIHNldCBucmVmRGF0YVBlcnNvbmFsTGVnYWxCYXNpcyA9IFtucmVmRGF0YVBlcnNvbmFsLCB1dWlkcy5ucmVmRGF0YVBlcnNvbmFsWWVzQVV1aWQsIHV1aWRzLm5yZWZEYXRhUGVyc29uYWxMZWdhbEJhc2lzUVV1aWRdfHJlcGx5X3BhdGggLSV9CiAgICAgICAgICAgIHslLSBzZXQgbnJlZkRhdGFQZXJzb25hbExlZ2FsQmFzaXNSZXBseSA9IHJlcGxpZXNNYXBbbnJlZkRhdGFQZXJzb25hbExlZ2FsQmFzaXNdfHJlcGx5X3N0cl92YWx1ZSAtJX0KICAgICAgICAgICAgeyUtIGlmIG5yZWZEYXRhUGVyc29uYWxMZWdhbEJhc2lzUmVwbHkgLSV9CiAgICAgICAgICAgICAgLCBsZWdhbHkgYmFzZWQgb257eysiICJ9fQogICAgICAgICAgICAgIHslLSBpZiBucmVmRGF0YVBlcnNvbmFsTGVnYWxCYXNpc1JlcGx5ID09IHV1aWRzLm5yZWZEYXRhUGVyc29uYWxMZWdhbEJhc2lzUHViSW50ZXJlc3RBVXVpZCAtJX0KICAgICAgICAgICAgICAgIHB1YmxpYyBpbnRlcmVzdCBmb3IgcHJvY2Vzc2luZyB0aGUgZGF0YSB1bmRlciBHRFBSLgogICAgICAgICAgICAgIHslLSBlbGlmIG5yZWZEYXRhUGVyc29uYWxMZWdhbEJhc2lzUmVwbHkgPT0gdXVpZHMubnJlZkRhdGFQZXJzb25hbExlZ2FsQmFzaXNDb25zZW50QVV1aWQgLSV9CiAgICAgICAgICAgICAgICBjb25zZW50IGdpdmVuIGJ5IHRoZSByZXNlYXJjaCBzdWJqZWN0IGZvciBwcm9jZXNzaW5nIHRoZSBkYXRhIHVuZGVyIEdEUFIKICAgICAgICAgICAgICAgIHslLSBzZXQgbnJlZkRhdGFQZXJzb25hbExlZ2FsQmFzaXNSZXVzZSA9IFtucmVmRGF0YVBlcnNvbmFsTGVnYWxCYXNpcywgdXVpZHMubnJlZkRhdGFQZXJzb25hbExlZ2FsQmFzaXNDb25zZW50QVV1aWQsIHV1aWRzLm5yZWZEYXRhUGVyc29uYWxMZWdhbEJhc2lzQ29uc2VudFJldXNlUVV1aWRdfHJlcGx5X3BhdGggLSV9CiAgICAgICAgICAgICAgICB7JS0gc2V0IG5yZWZEYXRhUGVyc29uYWxMZWdhbEJhc2lzUmV1c2VSZXBseSA9IHJlcGxpZXNNYXBbbnJlZkRhdGFQZXJzb25hbExlZ2FsQmFzaXNSZXVzZV18cmVwbHlfc3RyX3ZhbHVlIC0lfQogICAgICAgICAgICAgICAgeyUtIGlmIG5yZWZEYXRhUGVyc29uYWxMZWdhbEJhc2lzUmV1c2VSZXBseSAtJX0KICAgICAgICAgICAgICAgICAgLCB3aGljaHt7KyIgIn19CiAgICAgICAgICAgICAgICAgIHslLSBpZiBucmVmRGF0YVBlcnNvbmFsTGVnYWxCYXNpc1JldXNlUmVwbHkgPT0gdXVpZHMubnJlZkRhdGFQZXJzb25hbExlZ2FsQmFzaXNDb25zZW50UmV1c2VZZXNBVXVpZCAtJX0KICAgICAgICAgICAgICAgICAgICBjb3ZlcnMgYWxzbyBvdXIgcmV1c2UuCiAgICAgICAgICAgICAgICAgIHslLSBlbGlmIG5yZWZEYXRhUGVyc29uYWxMZWdhbEJhc2lzUmV1c2VSZXBseSA9PSB1dWlkcy5ucmVmRGF0YVBlcnNvbmFsTGVnYWxCYXNpc0NvbnNlbnRSZXVzZU5vQVV1aWQgLSV9CiAgICAgICAgICAgICAgICAgICAgZG9lcyBub3QgY292ZXIgb3VyIHJldXNlOyB0aGVyZWZvcmUsIG5ldyBjb25zZW50IHdpbGwgYmUgbmVlZGVkLgogICAgICAgICAgICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAgICAgICAgICAgICB7JS0gZWxzZSAtJX0KICAgICAgICAgICAgICAgIC4KICAgICAgICAgICAgICAgIHslLSBlbmRpZiAtJX0KICAgICAgICAgICAgICB7JS0gZWxpZiBucmVmRGF0YVBlcnNvbmFsTGVnYWxCYXNpc1JlcGx5ID09IHV1aWRzLm5yZWZEYXRhUGVyc29uYWxMZWJhbEJhc2lzT3RoZXJBVXVpZCAtJX0KICAgICAgICAgICAgICAgIHslLSBzZXQgbnJlZkRhdGFQZXJzb25hbExlZ2FsQmFzaXNPdGhlciA9IFtucmVmRGF0YVBlcnNvbmFsTGVnYWxCYXNpcywgdXVpZHMubnJlZkRhdGFQZXJzb25hbExlYmFsQmFzaXNPdGhlckFVdWlkLCB1dWlkcy5ucmVmRGF0YVBlcnNvbmFsTGVnYWxCYXNpc090aGVyUVV1aWRdfHJlcGx5X3BhdGggLSV9CiAgICAgICAgICAgICAgICB7JS0gc2V0IG5yZWZEYXRhUGVyc29uYWxMZWdhbEJhc2lzT3RoZXJSZXBseSA9IHJlcGxpZXNNYXBbbnJlZkRhdGFQZXJzb25hbExlZ2FsQmFzaXNPdGhlcl18cmVwbHlfc3RyX3ZhbHVlIC0lfQogICAgICAgICAgICAgICAgeyUtIGlmIG5yZWZEYXRhUGVyc29uYWxMZWdhbEJhc2lzT3RoZXJSZXBseSA9PSB1dWlkcy5ucmVmRGF0YVBlcnNvbmFsTGVnYWxCYXNpc090aGVyTGVnYWxBVXVpZCAtJX0KICAgICAgICAgICAgICAgICAgYSBsZWdhbCByZXF1aXJlbWVudCAobWVhbmluZyBhIGxlZ2FsIG9ibGlnYXRpb24gdG8gZG8gdGhpcyBkYXRhIHByb2Nlc3NpbmcpLgogICAgICAgICAgICAgICAgeyUtIGVsaWYgbnJlZkRhdGFQZXJzb25hbExlZ2FsQmFzaXNPdGhlclJlcGx5ID09IHV1aWRzLm5yZWZEYXRhUGVyc29uYWxMZWdhbEJhc2lzT3RoZXJWaXRhbEFVdWlkIC0lfQogICAgICAgICAgICAgICAgICBhIHZpdGFsIGludGVyZXN0IChtZWFuaW5nIGl0IG5lZWRzIHRvIGJlIGRvbmUgdG8gcHJvdGVjdCB0aGUgdml0YWwgaW50ZXJlc3RzIG9mIHRoZSBkYXRhIHN1YmplY3QpLgogICAgICAgICAgICAgICAgeyUtIGVsaWYgbnJlZkRhdGFQZXJzb25hbExlZ2FsQmFzaXNPdGhlclJlcGx5ID09IHV1aWRzLm5yZWZEYXRhUGVyc29uYWxMZWdhbEJhc2lzT3RoZXJMZWdpdEFVdWlkIC0lfQogICAgICAgICAgICAgICAgICBhIGxlZ2l0aW1hdGUgaW50ZXJlc3QgKG1lYW5pbmcgZGF0YSBzdWJqZWN0cyBhbGwgZXhwZWN0IHVzIHRvIGRvIHRoaXMgZGF0YSBwcm9jZXNzaW5nIGJlY2F1c2Ugb2Ygd2hvIHdlIGFyZSkuCiAgICAgICAgICAgICAgICB7JS0gZWxpZiBucmVmRGF0YVBlcnNvbmFsTGVnYWxCYXNpc090aGVyUmVwbHkgPT0gdXVpZHMubnJlZkRhdGFQZXJzb25hbExlZ2FsQmFzaXNPdGhlckNvbnRyYWN0QVV1aWQgLSV9CiAgICAgICAgICAgICAgICAgIGEgcmVxdWlyZW1lbnQgdG8gZnVsZmlsbCBvdXIgY29udHJhY3Qgd2l0aCB0aGUgZGF0YSBzdWJqZWN0cy4KICAgICAgICAgICAgICAgIHslLSBlbmRpZiAtJX0KICAgICAgICAgICAgICB7JS0gZW5kaWYgLSV9IAogICAgICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAgICAgICA8L3A- #}<p>
             This data include personal data
             {%- set nrefDataPersonalLegalBasis = [nrefDataPersonal, uuids.nrefDataPersonalYesAUuid, uuids.nrefDataPersonalLegalBasisQUuid]|reply_path -%}
             {%- set nrefDataPersonalLegalBasisReply = repliesMap[nrefDataPersonalLegalBasis]|reply_str_value -%}
@@ -421,14 +411,10 @@
                 consent given by the research subject for processing the data under GDPR
                 {%- set nrefDataPersonalLegalBasisReuse = [nrefDataPersonalLegalBasis, uuids.nrefDataPersonalLegalBasisConsentAUuid, uuids.nrefDataPersonalLegalBasisConsentReuseQUuid]|reply_path -%}
                 {%- set nrefDataPersonalLegalBasisReuseReply = repliesMap[nrefDataPersonalLegalBasisReuse]|reply_str_value -%}
-                {%- if nrefDataPersonalLegalBasisReuseReply -%}
-                  , which{{+" "}}
-                  {%- if nrefDataPersonalLegalBasisReuseReply == uuids.nrefDataPersonalLegalBasisConsentReuseYesAUuid -%}
-                    covers also our reuse.
-                  {%- elif nrefDataPersonalLegalBasisReuseReply == uuids.nrefDataPersonalLegalBasisConsentReuseNoAUuid -%}
-                    does not cover our reuse; therefore, new consent will be needed.
-                  {%- endif -%}
-                {%- else -%}
+                {%- if nrefDataPersonalLegalBasisReuseReply -%}{%- if nrefDataPersonalLegalBasisReuseReply == uuids.nrefDataPersonalLegalBasisConsentReuseYesAUuid -%}
+                  , which{{+" "}}{{" "}}covers also our reuse.{%- elif nrefDataPersonalLegalBasisReuseReply == uuids.nrefDataPersonalLegalBasisConsentReuseNoAUuid -%}
+                  , which{{+" "}}{{" "}}does not cover our reuse; therefore, new consent will be needed.{% else %}
+                  , which{{+" "}}{%- endif -%}{%- else -%}
                 .
                 {%- endif -%}
               {%- elif nrefDataPersonalLegalBasisReply == uuids.nrefDataPersonalLebalBasisOtherAUuid -%}
@@ -445,7 +431,7 @@
                 {%- endif -%}
               {%- endif -%} 
             {%- endif -%}
-          </p>
+          </p>{# __tr_branch_sentence_original:end #}
           {%- endif -%}
 
           {# Ethical Approval for Reuse #}

@@ -342,6 +342,49 @@ def test_expand_rewrites_simple_common_suffix_branches_reversibly(tmp_path: Path
         assert _render_template(expanded_text, context) == _render_template(source_text, context)
 
 
+def test_expand_rewrites_nested_subject_branches_inside_outer_branches(
+    tmp_path: Path,
+) -> None:
+    """Nested subject alternatives should keep their shared predicate."""
+
+    compact_dir = tmp_path / "compact"
+    (compact_dir / "src").mkdir(parents=True)
+    _write_minimal_template_json(compact_dir)
+    source_text = """
+<p>
+{% if stored %}Project members store data in the lab. {% endif %}
+{% if carry == "none" %}
+  {% if stored %}They{% else %}Project members{% endif %} will not carry data home.
+{% elif carry == "encrypted" %}
+  {% if stored %}They{% else %}Project members{% endif %} can carry encrypted data home.
+{% endif %}
+</p>
+""".lstrip()
+    (compact_dir / "src" / "index.html.j2").write_text(source_text, encoding="utf-8")
+
+    expanded_dir = tmp_path / "expanded"
+    rebuilt_dir = tmp_path / "rebuilt"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    compact_template_dir(source_dir=expanded_dir, output_dir=rebuilt_dir)
+
+    expanded_text = (expanded_dir / "src" / "index.html.j2").read_text(encoding="utf-8")
+    assert "They will not carry data home." in expanded_text
+    assert "Project members will not carry data home." in expanded_text
+    assert "They can carry encrypted data home." in expanded_text
+    assert "Project members can carry encrypted data home." in expanded_text
+    assert snapshot_tree(rebuilt_dir) == snapshot_tree(compact_dir)
+
+    contexts = [
+        {"stored": True, "carry": "none"},
+        {"stored": False, "carry": "none"},
+        {"stored": True, "carry": "encrypted"},
+        {"stored": False, "carry": "encrypted"},
+        {"stored": True, "carry": ""},
+    ]
+    for context in contexts:
+        assert _render_template(expanded_text, context) == _render_template(source_text, context)
+
+
 def test_expand_rewrites_simple_common_prefix_and_suffix_branches_reversibly(
     tmp_path: Path,
 ) -> None:

@@ -24,19 +24,19 @@
     {%- set storeLab = risksStoreLabAUuid == uuids.risksStoreLabNoAUuid -%}
 
     {%- if storeLab or (risksCarryHomeAUuid == uuids.risksCarryHomeNoAUuid) or (risksCarryHomeAUuid == uuids.risksCarryHomeYesAUuid and (homeEncrypted or homePassword)) or (risksCertificationsAUuid == uuids.risksCertificationsYesAUuid) or (risksHttpsAUuid == uuids.risksHttpsYesAUuid) or (risksInstructedAUuid == uuids.risksInstructedYesAUuid) %}
-      {# __tr_block_0001:start #}<p>
+      {# __tr_branch_sentence_original:PHA-CiAgICAgICAgeyUtIGlmIHN0b3JlTGFiICV9CiAgICAgICAgICBQcm9qZWN0IG1lbWJlcnMgd2lsbCBub3Qgc3RvcmUgZGF0YSBvciBzb2Z0d2FyZSBvbiBjb21wdXRlcnMgaW4gdGhlIGxhYiBvciBleHRlcm5hbCBoYXJkIGRyaXZlcyBjb25uZWN0ZWQgdG8gdGhvc2UgY29tcHV0ZXJzLnt7IiAifX0KICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAgICAgeyUtIGlmIHJpc2tzQ2FycnlIb21lQVV1aWQgPT0gdXVpZHMucmlza3NDYXJyeUhvbWVOb0FVdWlkICV9CiAgICAgICAgICB7JS0gaWYgc3RvcmVMYWIgLSV9VGhleXslLSBlbHNlIC0lfVByb2plY3QgbWVtYmVyc3slLSBlbmRpZiAlfSB3aWxsIG5vdCBjYXJyeSBkYXRhIHdpdGggdGhlbSAoZS5nLiBvbiBsYXB0b3BzLCBVU0Igc3RpY2tzLCBvciBvdGhlciBleHRlcm5hbCBtZWRpYSkuCiAgICAgICAgeyUtIGVsaWYgaG9tZUVuY3J5cHRlZCBhbmQgaG9tZVBhc3N3b3JkICV9CiAgICAgICAgICB7JS0gaWYgc3RvcmVMYWIgLSV9VGhleXslLSBlbHNlIC0lfVByb2plY3QgbWVtYmVyc3slLSBlbmRpZiAlfSBjYW4gY2FycnkgZGF0YSB3aXRoIHRoZW0gb24gZW5jcnlwdGVkIGRhdGEgY2FycmllcnMgYW5kIHBhc3N3b3JkLXByb3RlY3RlZCBsYXB0b3BzLgogICAgICAgIHslLSBlbGlmIGhvbWVFbmNyeXB0ZWQgJX0KICAgICAgICAgIHslLSBpZiBzdG9yZUxhYiAtJX1UaGV5eyUtIGVsc2UgLSV9UHJvamVjdCBtZW1iZXJzeyUtIGVuZGlmICV9IGNhbiBjYXJyeSBkYXRhIHdpdGggdGhlbSBvbiBlbmNyeXB0ZWQgZGF0YSBjYXJyaWVycy4KICAgICAgICB7JS0gZWxpZiBob21lUGFzc3dvcmQgJX0KICAgICAgICAgIHslLSBpZiBzdG9yZUxhYiAtJX1UaGV5eyUtIGVsc2UgLSV9UHJvamVjdCBtZW1iZXJzeyUtIGVuZGlmICV9IGNhbiBjYXJyeSBkYXRhIHdpdGggdGhlbSBvbiBwYXNzd29yZC1wcm90ZWN0ZWQgbGFwdG9wcy4KICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAgICAgeyUtIGlmIHJpc2tzQ2VydGlmaWNhdGlvbnNBVXVpZCA9PSB1dWlkcy5yaXNrc0NlcnRpZmljYXRpb25zWWVzQVV1aWQgJX0KICAgICAgICAgIEFsbCBkYXRhIGNlbnRlcnMgd2hlcmUgcHJvamVjdCBkYXRhIGlzIHN0b3JlZCBob2xkIGFwcHJvcHJpYXRlIGNlcnRpZmljYXRpb25zLgogICAgICAgIHslLSBlbmRpZiAtJX0KICAgICAgICB7JS0gaWYgcmlza3NIdHRwc0FVdWlkID09IHV1aWRzLnJpc2tzSHR0cHNZZXNBVXVpZCAlfQogICAgICAgICAgQWxsIHByb2plY3Qgd2ViIHNlcnZpY2VzIGFyZSBhY2Nlc3NpYmxlIHZpYSBzZWN1cmUgSFRUUCAoaHR0cHM6Ly8uLi4pLgogICAgICAgIHslLSBlbmRpZiAtJX0KICAgICAgICB7JS0gaWYgcmlza3NJbnN0cnVjdGVkQVV1aWQgPT0gdXVpZHMucmlza3NJbnN0cnVjdGVkWWVzQVV1aWQgJX0KICAgICAgICAgIFByb2plY3QgbWVtYmVycyBoYXZlIGJlZW4gaW5zdHJ1Y3RlZCBhYm91dCBib3RoIGdlbmVyaWMgYW5kIHNwZWNpZmljIHJpc2tzIHRvIHRoZSBwcm9qZWN0LgogICAgICAgIHslLSBlbmRpZiAtJX0KICAgICAgPC9wPg== #}{# __tr_block_0001:start #}<p>
         {%- if storeLab %}
           Project members will not store data or software on computers in the lab or external hard drives connected to those computers.{{" "}}
         {%- endif -%}
-        {%- if risksCarryHomeAUuid == uuids.risksCarryHomeNoAUuid %}
-          {%- if storeLab -%}They{%- else -%}Project members{%- endif %} will not carry data with them (e.g. on laptops, USB sticks, or other external media).
-        {%- elif homeEncrypted and homePassword %}
-          {%- if storeLab -%}They{%- else -%}Project members{%- endif %} can carry data with them on encrypted data carriers and password-protected laptops.
-        {%- elif homeEncrypted %}
-          {%- if storeLab -%}They{%- else -%}Project members{%- endif %} can carry data with them on encrypted data carriers.
-        {%- elif homePassword %}
-          {%- if storeLab -%}They{%- else -%}Project members{%- endif %} can carry data with them on password-protected laptops.
-        {%- endif -%}
+        {%- if risksCarryHomeAUuid == uuids.risksCarryHomeNoAUuid %}{%- if storeLab -%}They will not carry data with them (e.g. on laptops, USB sticks, or other external media).
+        {%- else -%}Project members will not carry data with them (e.g. on laptops, USB sticks, or other external media).
+        {%- endif %}{%- elif homeEncrypted and homePassword %}{%- if storeLab -%}They can carry data with them on encrypted data carriers and password-protected laptops.
+        {%- else -%}Project members can carry data with them on encrypted data carriers and password-protected laptops.
+        {%- endif %}{%- elif homeEncrypted %}{%- if storeLab -%}They can carry data with them on encrypted data carriers.
+        {%- else -%}Project members can carry data with them on encrypted data carriers.
+        {%- endif %}{%- elif homePassword %}{%- if storeLab -%}They can carry data with them on password-protected laptops.
+        {%- else -%}Project members can carry data with them on password-protected laptops.
+        {%- endif %}{%- endif -%}
         {%- if risksCertificationsAUuid == uuids.risksCertificationsYesAUuid %}
           All data centers where project data is stored hold appropriate certifications.
         {%- endif -%}
@@ -46,7 +46,7 @@
         {%- if risksInstructedAUuid == uuids.risksInstructedYesAUuid %}
           Project members have been instructed about both generic and specific risks to the project.
         {%- endif -%}
-      </p>{# __tr_block_0001:end #}
+      </p>{# __tr_block_0001:end #}{# __tr_branch_sentence_original:end #}
     {%- endif -%}
     {# Information loss, leak, and vandalism #}
     {%- set risksInfoLossPath = [risksPathPrefix, uuids.risksInfoLossQUuid]|reply_path -%}
