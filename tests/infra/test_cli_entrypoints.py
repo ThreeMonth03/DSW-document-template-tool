@@ -52,7 +52,7 @@ def test_transform_template_help(repo_root) -> None:
 
 
 def test_translation_tree_help(repo_root) -> None:
-    """The translation-tree CLI should expose export/sync commands."""
+    """The translation-tree CLI should expose export/audit/sync commands."""
 
     result = subprocess.run(
         [sys.executable, str(repo_root / "src" / "translation_tree.py"), "--help"],
@@ -63,6 +63,7 @@ def test_translation_tree_help(repo_root) -> None:
     assert result.returncode == 0
     assert "translator-facing trees" in result.stdout
     assert "export" in result.stdout
+    assert "audit" in result.stdout
     assert "sync" in result.stdout
 
     result = subprocess.run(
@@ -73,6 +74,16 @@ def test_translation_tree_help(repo_root) -> None:
     )
     assert result.returncode == 0
     assert "--template-id" in result.stdout
+
+    result = subprocess.run(
+        [sys.executable, str(repo_root / "src" / "translation_tree.py"), "audit", "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    assert "--tree" in result.stdout
+    assert "--source" in result.stdout
 
 
 def test_checked_in_compact_and_expanded_templates_verify(repo_root: Path) -> None:

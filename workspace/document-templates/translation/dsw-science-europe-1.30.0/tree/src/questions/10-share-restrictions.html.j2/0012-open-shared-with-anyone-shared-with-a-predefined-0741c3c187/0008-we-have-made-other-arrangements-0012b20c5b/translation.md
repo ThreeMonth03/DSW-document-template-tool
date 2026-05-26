@@ -11,7 +11,7 @@
 ### Sentence (en)
 
 ```text
-We have made other arrangements{value}
+We have made other arrangements{domainSpecificRepoContactBeforeOther}
 ```
 
 ### Translation (zh_Hant)

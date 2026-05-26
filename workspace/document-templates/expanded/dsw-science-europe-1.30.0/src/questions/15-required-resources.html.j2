@@ -10,47 +10,41 @@
     {%- elif expertiseAUuid == uuids.additionalExpertiseYesAvailableAUuid -%}
       {# __tr_block_0002:start #}<p>To execute the DMP, additional specialist expertise is required and we have such trained support staff available.</p>{# __tr_block_0002:end #}
     {%- elif expertiseAUuid == uuids.additionalExpertiseYesTrainAUuid -%}
-      {# __tr_block_0003:start #}<p>
+      {# __tr_branch_sentence_original:PHA-CiAgICAgICAgVG8gZXhlY3V0ZSB0aGUgRE1QLCBhZGRpdGlvbmFsIHNwZWNpYWxpc3QgZXhwZXJ0aXNlIGlzIHJlcXVpcmVkLiBXZSB3aWxsIGJlIHRyYWluaW5nIGV4aXN0aW5nIHN0YWZmCiAgICAgICAgeyUtIHNldCBleHBlcnRpc2VUcmFpblBhdGggPSBbZXhwZXJ0aXNlUGF0aCwgdXVpZHMuYWRkaXRpb25hbEV4cGVydGlzZVllc1RyYWluQVV1aWQsIHV1aWRzLmFkZGl0aW9uYWxFeHBlcnRpc2VZZXNUcmFpblRyYWluaW5nUVV1aWRdfHJlcGx5X3BhdGggLSV9CiAgICAgICAgeyUtIHNldCBleHBlcnRpc2VUcmFpblRleHQgPSByZXBsaWVzTWFwW2V4cGVydGlzZVRyYWluUGF0aF18cmVwbHlfc3RyX3ZhbHVlIC0lfQogICAgICAgIHslLSBpZiBleHBlcnRpc2VUcmFpblRleHQgJX0KICAgICAgICAgIHt7IiAifX1vbjoge3sgZXhwZXJ0aXNlVHJhaW5UZXh0fX0KICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAgICAgLgogICAgICA8L3A- #}{%- set expertiseTrainPath = [expertisePath, uuids.additionalExpertiseYesTrainAUuid, uuids.additionalExpertiseYesTrainTrainingQUuid]|reply_path -%}{%- set expertiseTrainText = repliesMap[expertiseTrainPath]|reply_str_value -%}{%- if expertiseTrainText %}{# __tr_block_0003:start #}<p>
         To execute the DMP, additional specialist expertise is required. We will be training existing staff
-        {%- set expertiseTrainPath = [expertisePath, uuids.additionalExpertiseYesTrainAUuid, uuids.additionalExpertiseYesTrainTrainingQUuid]|reply_path -%}
-        {%- set expertiseTrainText = repliesMap[expertiseTrainPath]|reply_str_value -%}
-        {%- if expertiseTrainText %}
-          {{" "}}on: {{ expertiseTrainText}}
-        {%- endif -%}
-        .
-      </p>{# __tr_block_0003:end #}
+          {{" "}}on: {{ expertiseTrainText}}.
+      </p>{# __tr_block_0003:end #}{% else %}{# __tr_block_0004:start #}<p>
+        To execute the DMP, additional specialist expertise is required. We will be training existing staff.
+      </p>{# __tr_block_0004:end #}{%- endif -%}{# __tr_branch_sentence_original:end #}
     {%- elif expertiseAUuid == uuids.additionalExpertiseYesHireAUuid -%}
-      {# __tr_block_0004:start #}<p>
+      {# __tr_branch_sentence_original:PHA-CiAgICAgICAgVG8gZXhlY3V0ZSB0aGUgRE1QLCBhZGRpdGlvbmFsIHNwZWNpYWxpc3QgZXhwZXJ0aXNlIGlzIHJlcXVpcmVkLiBXZSB3aWxsIGJlIGhpcmluZyBuZXcgcGVvcGxlIHdpdGggYWRkaXRpb25hbCBleHBlcnRpc2UKICAgICAgICB7JS0gc2V0IGV4cGVydGlzZUhpcmVQYXRoID0gW2V4cGVydGlzZVBhdGgsIHV1aWRzLmFkZGl0aW9uYWxFeHBlcnRpc2VZZXNIaXJlQVV1aWQsIHV1aWRzLmFkZGl0aW9uYWxFeHBlcnRpc2VZZXNIaXJlRXhwZXJ0aXNlUVV1aWRdfHJlcGx5X3BhdGggLSV9CiAgICAgICAgeyUtIHNldCBleHBlcnRpc2VIaXJlVGV4dCA9IHJlcGxpZXNNYXBbZXhwZXJ0aXNlSGlyZVBhdGhdfHJlcGx5X3N0cl92YWx1ZSAtJX0KICAgICAgICB7JS0gaWYgZXhwZXJ0aXNlSGlyZVRleHQgJX0KICAgICAgICAgIHt7IiAifX1pbjoge3sgZXhwZXJ0aXNlSGlyZVRleHR9fQogICAgICAgIHslLSBlbmRpZiAtJX0KICAgICAgICAuCiAgICAgIDwvcD4= #}{%- set expertiseHirePath = [expertisePath, uuids.additionalExpertiseYesHireAUuid, uuids.additionalExpertiseYesHireExpertiseQUuid]|reply_path -%}{%- set expertiseHireText = repliesMap[expertiseHirePath]|reply_str_value -%}{%- if expertiseHireText %}{# __tr_block_0005:start #}<p>
         To execute the DMP, additional specialist expertise is required. We will be hiring new people with additional expertise
-        {%- set expertiseHirePath = [expertisePath, uuids.additionalExpertiseYesHireAUuid, uuids.additionalExpertiseYesHireExpertiseQUuid]|reply_path -%}
-        {%- set expertiseHireText = repliesMap[expertiseHirePath]|reply_str_value -%}
-        {%- if expertiseHireText %}
-          {{" "}}in: {{ expertiseHireText}}
-        {%- endif -%}
-        .
-      </p>{# __tr_block_0004:end #}
+          {{" "}}in: {{ expertiseHireText}}.
+      </p>{# __tr_block_0005:end #}{% else %}{# __tr_block_0006:start #}<p>
+        To execute the DMP, additional specialist expertise is required. We will be hiring new people with additional expertise.
+      </p>{# __tr_block_0006:end #}{%- endif -%}{# __tr_branch_sentence_original:end #}
     {%- endif -%}
     {# additional hw/sw #}
     {%- set additionalHWSWPath = [uuids.adminDetailsCUuid, uuids.additionalHWSWQUuid]|reply_path -%}
     {%- set additionalHWSWAUuid = repliesMap[additionalHWSWPath]|reply_str_value -%}
     {%- if additionalHWSWAUuid == uuids.additionalHWSWNoAUuid -%}
-      {# __tr_block_0005:start #}<p>We do not require any hardware or software in addition to what is usually available in the institute.</p>{# __tr_block_0005:end #}
+      {# __tr_block_0007:start #}<p>We do not require any hardware or software in addition to what is usually available in the institute.</p>{# __tr_block_0007:end #}
     {%- elif additionalHWSWAUuid == uuids.additionalHWSWYesAUuid -%}
       {%- set additionalHWSWWhatPath = [additionalHWSWPath, uuids.additionalHWSWYesAUuid, uuids.additionalHWSWYesWhatQUuid]|reply_path -%}
       {%- set additionalHWSWWhat = repliesMap[additionalHWSWWhatPath]|reply_str_value -%}
       {%- if additionalHWSWWhat -%}
-        {# __tr_block_0006:start #}<p>We require the following hardware or software in addition to what is usually available in the institute: {{ additionalHWSWWhat|dot }}</p>{# __tr_block_0006:end #}
+        {# __tr_block_0008:start #}<p>We require the following hardware or software in addition to what is usually available in the institute: {{ additionalHWSWWhat|dot }}</p>{# __tr_block_0008:end #}
       {%- else -%}
-        {# __tr_block_0007:start #}<p>We require hardware or software in addition to what is usually available in the institute.</p>{# __tr_block_0007:end #}
+        {# __tr_block_0009:start #}<p>We require hardware or software in addition to what is usually available in the institute.</p>{# __tr_block_0009:end #}
       {%- endif -%}
     {%- endif -%}
     {# charges #}
-    {# __tr_block_0008:start #}<p>Charges applied by data repositories (if any) are mentioned already in Section 4, Question 11.</p>{# __tr_block_0008:end #}
+    {# __tr_block_0010:start #}<p>Charges applied by data repositories (if any) are mentioned already in Section 4, Question 11.</p>{# __tr_block_0010:end #}
     {# costs #}
     {%- set projectPath = [uuids.adminDetailsCUuid, uuids.projectsQUuid]|reply_path -%}
     {%- set projectItems = repliesMap[projectPath]|reply_items -%}
     {%- if projectItems|length > 0 -%}
-    {# __tr_block_0009:start #}<p>Following resources will be dedicated to data management and ensuring that data will be FAIR:</p>{# __tr_block_0009:end #}
+    {# __tr_block_0011:start #}<p>Following resources will be dedicated to data management and ensuring that data will be FAIR:</p>{# __tr_block_0011:end #}
     <ul>
         {%- for i in projectItems -%}
             {%- set projectItem = [projectPath, i]|reply_path -%}
@@ -59,7 +53,7 @@
 
             {%- set projectItemNumberQUuid = [projectItem, uuids.projectNumberQUuid]|reply_path -%}
             {%- set projectItemNumberReply = repliesMap[projectItemNumberQUuid]|reply_str_value -%}
-            {# __tr_block_0010:start #}<li> 
+            {# __tr_block_0012:start #}<li> 
                 <strong>{# __tr_inline_if_original:e3sgcHJvamVjdEl0ZW1OYW1lUmVwbHkgaWYgcHJvamVjdEl0ZW1OYW1lUmVwbHkgZWxzZSAiKG5vIG5hbWUgZ2l2ZW4pIiB9fQ== #}{% if projectItemNameReply %}{{ projectItemNameReply }}{% else %}{{ "(no name given)" }}{% endif %}{# __tr_inline_if_original:end #}{{ " - " + projectItemNumberReply if projectItemNumberReply}} </strong>
 
                 {%- set projectCostPath = [projectItem, uuids.costQUuid]|reply_path -%}
@@ -149,7 +143,7 @@
                     </ul>
                 {%- endif -%}
 
-            </li>{# __tr_block_0010:end #}
+            </li>{# __tr_block_0012:end #}
 
         {%- endfor -%}
     </ul>

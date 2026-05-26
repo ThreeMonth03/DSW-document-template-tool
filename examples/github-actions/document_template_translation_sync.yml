@@ -130,6 +130,37 @@ jobs:
             "$TRANSLATION_TREE_DIR/.translation-tree" \
             "$TRANSLATION_TREE_DIR/tree")"
 
+      - name: Audit translation blocks
+        run: |
+          set -euo pipefail
+          HOST_ROOT="$GITHUB_WORKSPACE/template-repo"
+          TOOL_ROOT="$GITHUB_WORKSPACE/tooling-repo"
+          AUDIT_LOG="$(mktemp)"
+
+          if ! "$TOOL_ROOT/.venv/bin/python" "$TOOL_ROOT/src/translation_tree.py" audit \
+            --tree "$HOST_ROOT/$TRANSLATION_TREE_DIR" \
+            --source "$HOST_ROOT/$EXPANDED_TEMPLATE_DIR" 2>&1 | tee "$AUDIT_LOG"; then
+            {
+              echo "## Translation block audit failed"
+              echo
+              echo "The translation tree contains blocks that are unsafe for translators."
+              echo "Usually this means raw Jinja leaked into a translation.md file or a"
+              echo "source unit still needs to be split by the expanded-template rewrite."
+              echo
+              echo '```text'
+              tail -n 120 "$AUDIT_LOG"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            ERROR_LINE="$(grep -E '^- ' "$AUDIT_LOG" | head -n 1 || true)"
+            if [ -n "$ERROR_LINE" ]; then
+              echo "::error title=Translation block audit failed::$ERROR_LINE"
+            else
+              echo "::error title=Translation block audit failed::See job summary for details."
+            fi
+            exit 1
+          fi
+
       - name: Sync translations into output template
         run: |
           set -euo pipefail

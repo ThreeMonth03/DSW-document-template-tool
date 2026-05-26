@@ -11,7 +11,7 @@
 ### Sentence (en)
 
 ```text
-we have other than paper-publishing reasons{value}.
+we have other than paper-publishing reasons{notOpenOtherReasonsOther}.
 ```
 
 ### Translation (zh_Hant)

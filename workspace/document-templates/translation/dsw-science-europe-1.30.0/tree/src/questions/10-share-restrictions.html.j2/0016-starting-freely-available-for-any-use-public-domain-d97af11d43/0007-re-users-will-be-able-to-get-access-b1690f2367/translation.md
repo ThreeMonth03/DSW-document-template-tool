@@ -11,7 +11,7 @@
 ### Sentence (en)
 
 ```text
-Re-users will be able to get access through a specialized process{value}
+Re-users will be able to get access through a specialized process{licenseRestrictAccessAnother}
 ```
 
 ### Translation (zh_Hant)

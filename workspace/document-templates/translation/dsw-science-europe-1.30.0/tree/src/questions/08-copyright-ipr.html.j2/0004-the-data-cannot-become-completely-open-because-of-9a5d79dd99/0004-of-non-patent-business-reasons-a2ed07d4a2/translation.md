@@ -11,7 +11,7 @@
 ### Sentence (en)
 
 ```text
-of non-patent business reasons{value}
+of non-patent business reasons{notOpenBusinessReasonsOther}
 ```
 
 ### Translation (zh_Hant)

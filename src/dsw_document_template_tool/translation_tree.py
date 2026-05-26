@@ -16,12 +16,16 @@ from pathlib import Path
 from .template_transform import (
     ANNOTATABLE_HTML_TAGS,
     GENERATED_BLOCK_PATTERN,
+    JINJA_STRING_LITERAL_PATTERN,
     MANIFEST_PATH,
     AnnotationRegion,
     SourceToken,
     _extract_translatable_jinja_block_literals,
     _extract_translatable_jinja_literals,
     _find_matching_tag_end,
+    _is_dict_key_literal,
+    _is_subscript_literal,
+    _is_translatable_jinja_literal,
     _lex_source_tokens,
     generated_block_body,
     generated_block_name,
@@ -56,6 +60,7 @@ HTML_CONTEXT_BOUNDARY_PATTERN = re.compile(
     re.IGNORECASE,
 )
 TRANSLATOR_PLACEHOLDER_PATTERN = re.compile(r"(?<!\{)\{(?P<name>[A-Za-z_][A-Za-z0-9_.]*)\}(?!\})")
+RAW_JINJA_IN_TRANSLATION_PATTERN = re.compile(r"\{[#%{]")
 VISIBLE_TEXT_PATTERN = re.compile(r"[A-Za-z0-9]+")
 CONNECTOR_ONLY_WORDS = {
     "a",
@@ -112,6 +117,15 @@ class TranslationEntry:
 
     text: str
     document_path: str
+
+
+@dataclass(frozen=True)
+class TranslationTreeAuditIssue:
+    """One machine-checkable issue in a translator-facing tree."""
+
+    code: str
+    location: str
+    message: str
 
 
 @dataclass(frozen=True)
@@ -382,6 +396,65 @@ def sync_translation_tree(
     return output_dir
 
 
+def audit_translation_tree(
+    *,
+    tree_dir: Path,
+    source_dir: Path,
+    source_lang: str = DEFAULT_SOURCE_LANG,
+    target_lang: str = DEFAULT_TARGET_LANG,
+) -> list[TranslationTreeAuditIssue]:
+    """Return structural issues that make translation blocks unsafe to edit."""
+
+    tree_dir = Path(tree_dir).resolve()
+    source_dir = Path(source_dir).resolve()
+    issues: list[TranslationTreeAuditIssue] = []
+
+    try:
+        _validate_expanded_workspace(source_dir)
+    except TranslationTreeError as exc:
+        return [
+            TranslationTreeAuditIssue(
+                code="invalid-expanded-workspace",
+                location=str(source_dir),
+                message=str(exc),
+            )
+        ]
+
+    try:
+        manifest = _load_tree_manifest(tree_dir)
+    except TranslationTreeError as exc:
+        return [
+            TranslationTreeAuditIssue(
+                code="invalid-translation-tree",
+                location=str(tree_dir),
+                message=str(exc),
+            )
+        ]
+
+    units = manifest.get("units")
+    if not isinstance(units, list):
+        return [
+            TranslationTreeAuditIssue(
+                code="invalid-translation-tree",
+                location=str(tree_dir / TREE_MANIFEST_PATH),
+                message="Manifest `units` must be a list.",
+            )
+        ]
+
+    for unit in units:
+        issues.extend(
+            _audit_manifest_unit(
+                tree_dir=tree_dir,
+                source_dir=source_dir,
+                unit=unit,
+                source_lang=source_lang,
+                target_lang=target_lang,
+            )
+        )
+
+    return issues
+
+
 def _patch_template_metadata(
     *,
     output_dir: Path,
@@ -410,6 +483,181 @@ def _patch_template_metadata(
     )
 
 
+def _audit_manifest_unit(
+    *,
+    tree_dir: Path,
+    source_dir: Path,
+    unit: object,
+    source_lang: str,
+    target_lang: str,
+) -> list[TranslationTreeAuditIssue]:
+    issues: list[TranslationTreeAuditIssue] = []
+    if not isinstance(unit, dict):
+        return [
+            TranslationTreeAuditIssue(
+                code="invalid-manifest-unit",
+                location=str(tree_dir / TREE_MANIFEST_PATH),
+                message=f"Manifest unit must be an object, got {type(unit).__name__}.",
+            )
+        ]
+
+    source_file = unit.get("source_file")
+    unit_key = unit.get("unit_key")
+    document_path_raw = unit.get("document_path")
+    if not isinstance(source_file, str) or not isinstance(unit_key, str):
+        return [
+            TranslationTreeAuditIssue(
+                code="invalid-manifest-unit",
+                location=str(tree_dir / TREE_MANIFEST_PATH),
+                message="Manifest unit is missing a valid source_file or unit_key.",
+            )
+        ]
+    location = source_file if not isinstance(unit_key, str) else f"{source_file} ({unit_key})"
+
+    try:
+        source_unit_text = _source_unit_text_from_manifest_unit(
+            source_dir=source_dir,
+            unit=unit,
+        )
+    except TranslationTreeError as exc:
+        issues.append(
+            TranslationTreeAuditIssue(
+                code="invalid-source-span",
+                location=location,
+                message=str(exc),
+            )
+        )
+        source_unit_text = None
+
+    if source_unit_text is not None:
+        if _contains_jinja_block_or_comment(source_unit_text):
+            issues.append(
+                TranslationTreeAuditIssue(
+                    code="unsafe-source-jinja-block",
+                    location=location,
+                    message=(
+                        "Source unit contains raw Jinja block/comment syntax. "
+                        "Expand/export must split this before translators edit it."
+                    ),
+                )
+            )
+
+        placeholder_map = _build_source_placeholder_map(source_unit_text)
+        source_placeholder_names = set(_source_placeholder_counts(source_unit_text))
+        ambiguous_names = sorted(source_placeholder_names - set(placeholder_map))
+        if ambiguous_names:
+            issues.append(
+                TranslationTreeAuditIssue(
+                    code="ambiguous-source-placeholder",
+                    location=location,
+                    message=(
+                        "Source unit has placeholder names that cannot be mapped back "
+                        f"unambiguously: {', '.join('{' + name + '}' for name in ambiguous_names)}"
+                    ),
+                )
+            )
+
+    if not isinstance(document_path_raw, str):
+        issues.append(
+            TranslationTreeAuditIssue(
+                code="invalid-manifest-unit",
+                location=location,
+                message="Manifest unit is missing a valid document_path.",
+            )
+        )
+        return issues
+
+    document_path = tree_dir / document_path_raw
+    if not document_path.is_file():
+        issues.append(
+            TranslationTreeAuditIssue(
+                code="missing-translation-document",
+                location=document_path_raw,
+                message="Translation document is missing. Re-run export to restore it.",
+            )
+        )
+        return issues
+
+    try:
+        translation_text = _parse_translation_document(
+            document_path=document_path,
+            source_lang=source_lang,
+            target_lang=target_lang,
+        )
+    except TranslationTreeError as exc:
+        issues.append(
+            TranslationTreeAuditIssue(
+                code="invalid-translation-document",
+                location=document_path_raw,
+                message=str(exc),
+            )
+        )
+        return issues
+
+    has_raw_jinja_translation = _contains_raw_jinja_in_translation(translation_text)
+    if has_raw_jinja_translation:
+        issues.append(
+            TranslationTreeAuditIssue(
+                code="raw-jinja-in-translation",
+                location=document_path_raw,
+                message=(
+                    "Translation block contains raw Jinja syntax. Use translator "
+                    "placeholders such as `{name}` instead of `{% ... %}` or `{{ ... }}`."
+                ),
+            )
+        )
+
+    if source_unit_text is not None and translation_text.strip() and not has_raw_jinja_translation:
+        try:
+            _validate_translation_placeholders(
+                source_file=source_file,
+                unit_key=unit_key,
+                translation_document_path=document_path_raw,
+                source_text=source_unit_text,
+                translation_text=translation_text,
+            )
+        except TranslationTreeError as exc:
+            issues.append(
+                TranslationTreeAuditIssue(
+                    code="invalid-translation-placeholders",
+                    location=document_path_raw,
+                    message=str(exc),
+                )
+            )
+
+    return issues
+
+
+def _source_unit_text_from_manifest_unit(*, source_dir: Path, unit: dict) -> str:
+    source_file = unit.get("source_file")
+    wrapper_order = unit.get("wrapper_order")
+    unit_start = unit.get("unit_start")
+    unit_end = unit.get("unit_end")
+    if (
+        not isinstance(source_file, str)
+        or not isinstance(wrapper_order, int)
+        or not isinstance(unit_start, int)
+        or not isinstance(unit_end, int)
+    ):
+        raise TranslationTreeError("Manifest unit has invalid source span metadata.")
+
+    source_path = source_dir / source_file
+    if not source_path.is_file():
+        raise TranslationTreeError(f"Source file is missing: {source_path}")
+    source_text = source_path.read_text(encoding="utf-8")
+    wrappers = list(GENERATED_BLOCK_PATTERN.finditer(source_text))
+    if wrapper_order < 1 or wrapper_order > len(wrappers):
+        raise TranslationTreeError(
+            f"Wrapper order {wrapper_order} does not exist in {source_file}."
+        )
+    wrapper_body = generated_block_body(wrappers[wrapper_order - 1])
+    if unit_start < 0 or unit_end > len(wrapper_body) or unit_start >= unit_end:
+        raise TranslationTreeError(
+            f"Unit span {unit_start}:{unit_end} is invalid for {source_file}."
+        )
+    return wrapper_body[unit_start:unit_end]
+
+
 def _extract_units(*, relative_path: str, source_text: str) -> list[TranslationUnit]:
     units: list[TranslationUnit] = []
     key_counts: dict[str, int] = {}
@@ -425,6 +673,8 @@ def _extract_units(*, relative_path: str, source_text: str) -> list[TranslationU
         unit_index = 0
         for region in unit_regions:
             unit_text = wrapper_body[region.start : region.end]
+            if _is_unsafe_translation_unit_source(unit_text):
+                continue
             if _is_connector_only_translation_unit(unit_text):
                 continue
             unit_index += 1
@@ -536,7 +786,15 @@ def _collect_translation_unit_regions(source_text: str) -> list[AnnotationRegion
         source_text=source_text,
         covered_regions=branch_covered_regions + element_regions,
     )
-    return sorted(branch_regions + element_regions + inline_regions, key=lambda item: item.start)
+    literal_regions = _collect_jinja_literal_regions(
+        tokens=tokens,
+        source_text=source_text,
+        covered_regions=branch_covered_regions + element_regions + inline_regions,
+    )
+    return sorted(
+        branch_regions + element_regions + inline_regions + literal_regions,
+        key=lambda item: item.start,
+    )
 
 
 def _collect_branch_unit_regions(source_text: str, *, base_offset: int = 0) -> JinjaBranchRegions:
@@ -851,6 +1109,40 @@ def _collect_regions_outside_covered(
     )
 
 
+def _collect_jinja_literal_regions(
+    *,
+    tokens: list[SourceToken],
+    source_text: str,
+    covered_regions: list[AnnotationRegion],
+) -> list[AnnotationRegion]:
+    regions: list[AnnotationRegion] = []
+    for token in tokens:
+        if token.kind not in {"jinja_block", "jinja_expr"}:
+            continue
+        if _is_inside_region(token=token, regions=covered_regions):
+            continue
+        for match in JINJA_STRING_LITERAL_PATTERN.finditer(token.text):
+            literal = match.group("literal")
+            if _is_subscript_literal(expr=token.text, start=match.start(), end=match.end()):
+                continue
+            if _is_dict_key_literal(expr=token.text, end=match.end()):
+                continue
+            try:
+                value = ast.literal_eval(literal)
+            except (SyntaxError, ValueError):
+                continue
+            if not isinstance(value, str) or not _is_translatable_jinja_literal(value):
+                continue
+            literal_start = token.start + match.start("literal") + 1
+            literal_end = token.start + match.end("literal") - 1
+            region = AnnotationRegion(start=literal_start, end=literal_end)
+            if _overlaps_any_region(region=region, regions=covered_regions):
+                continue
+            if _contains_translatable_text(source_text[literal_start:literal_end]):
+                regions.append(region)
+    return _dedupe_regions(regions)
+
+
 def _dedupe_regions(regions: list[AnnotationRegion]) -> list[AnnotationRegion]:
     unique = sorted(set(regions), key=lambda item: (item.start, item.end))
     deduped: list[AnnotationRegion] = []
@@ -877,9 +1169,10 @@ def _collect_leaf_element_regions(
                 continue
             region = AnnotationRegion(start=token.start, end=tokens[end_index].end)
             region_text = source_text[region.start : region.end]
-            if _contains_translatable_text(
-                region_text
-            ) and not _contains_machine_only_inline_markup(region_text):
+            if _contains_translatable_text(region_text) and not (
+                _contains_machine_only_inline_markup(region_text)
+                or _contains_jinja_block_or_comment(region_text)
+            ):
                 candidate_regions.append(region)
 
     leaf_regions: list[AnnotationRegion] = []
@@ -897,7 +1190,7 @@ def _collect_inline_text_regions(
     tokens: list[SourceToken],
     source_text: str,
     covered_regions: list[AnnotationRegion],
-    include_control_tokens: bool = True,
+    include_control_tokens: bool = False,
 ) -> list[AnnotationRegion]:
     regions: list[AnnotationRegion] = []
     pending_tokens: list[SourceToken] = []
@@ -917,8 +1210,9 @@ def _collect_inline_text_regions(
         if _is_inside_region(token=token, regions=covered_regions):
             flush_pending()
             continue
-        # Control blocks often split one rendered sentence; keep them in the same
-        # inline region so translators do not see bare connectors such as "and".
+        # Raw Jinja control blocks are executable template code, not translator text.
+        # Expanded rewrites should duplicate safe branch sentences instead of asking
+        # translators to preserve `{% ... %}` manually.
         if token.kind in {"text", "jinja_expr", "jinja_comment"} or (
             include_control_tokens and token.kind == "jinja_block"
         ):
@@ -1129,6 +1423,17 @@ def _validate_translation_placeholders(
     source_text: str,
     translation_text: str,
 ) -> None:
+    if _contains_raw_jinja_in_translation(translation_text):
+        location = _format_translation_location(
+            source_file,
+            unit_key,
+            translation_document_path,
+        )
+        raise TranslationTreeError(
+            "Translation contains raw Jinja syntax for "
+            f"{location}. Use translator placeholders such as `{{name}}` instead."
+        )
+
     source_counts = _source_placeholder_counts(source_text)
     if not source_counts and not _extract_translator_placeholder_names(translation_text):
         return
@@ -1280,6 +1585,20 @@ def _contains_translatable_text(source_text: str) -> bool:
     stripped = HTML_TAG_PATTERN.sub(" ", stripped)
     stripped = html.unescape(stripped)
     return VISIBLE_TEXT_PATTERN.search(stripped) is not None
+
+
+def _is_unsafe_translation_unit_source(source_text: str) -> bool:
+    """Return true when replacing the unit would drop executable Jinja code."""
+
+    return _contains_jinja_block_or_comment(source_text)
+
+
+def _contains_jinja_block_or_comment(source_text: str) -> bool:
+    return "{%" in source_text
+
+
+def _contains_raw_jinja_in_translation(translation_text: str) -> bool:
+    return RAW_JINJA_IN_TRANSLATION_PATTERN.search(translation_text) is not None
 
 
 def _is_connector_only_translation_unit(source_text: str) -> bool:
@@ -1584,10 +1903,10 @@ def _extract_sentence_text(source_text: str) -> str:
     sentence = html.unescape(without_tags)
     sentence = re.sub(r"\s+", " ", sentence).strip()
     sentence = re.sub(r"\s+([,.;:!?])", r"\1", sentence)
-    sentence = re.sub(r"([,;:])(?=\S)", r"\1 ", sentence)
-    sentence = re.sub(r"\s*/\s*\.", "", sentence)
-    sentence = re.sub(r"\.{2,}", ".", sentence)
-    sentence = re.sub(r"([.!?])\.", r"\1", sentence)
+    sentence = re.sub(r"([,;:])(?=[^\s/])", r"\1 ", sentence)
+    sentence = re.sub(r"\s+/\s*\.", "", sentence)
+    sentence = re.sub(r"(?<![/.])\.{2,}", ".", sentence)
+    sentence = re.sub(r"(?<![/.])([.!?])\.", r"\1", sentence)
     sentence = re.sub(r"\s+\.", ".", sentence)
     sentence = sentence.strip()
     return sentence or "(no visible sentence)"
@@ -1613,7 +1932,53 @@ def _jinja_expr_to_placeholder(expr: str) -> str:
         return indexed_placeholder
     if re.match(r"^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$", base):
         return "{" + base + "}"
+    inferred_placeholder = _identifier_expr_to_placeholder(base)
+    if inferred_placeholder is not None:
+        return inferred_placeholder
     return "{value}"
+
+
+def _identifier_expr_to_placeholder(expr: str) -> str | None:
+    """Infer a stable placeholder name from computed expressions."""
+
+    without_literals = re.sub(
+        r"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'",
+        " ",
+        expr,
+        flags=re.DOTALL,
+    )
+    without_filters = re.sub(r"\|[A-Za-z_][A-Za-z0-9_]*", " ", without_literals)
+    without_call_names = re.sub(
+        r"\b[A-Za-z_][A-Za-z0-9_.]*\s*(?=\()",
+        " ",
+        without_filters,
+    )
+    without_attr_prefixes = re.sub(
+        r"\b[A-Za-z_][A-Za-z0-9_]*\.",
+        "",
+        without_call_names,
+    )
+    reserved_words = {
+        "and",
+        "else",
+        "false",
+        "if",
+        "in",
+        "is",
+        "none",
+        "not",
+        "or",
+        "true",
+    }
+    names: list[str] = []
+    for match in re.finditer(r"\b[A-Za-z_][A-Za-z0-9_]*\b", without_attr_prefixes):
+        name = match.group(0)
+        if name.lower() in reserved_words or name in names:
+            continue
+        names.append(name)
+    if not names:
+        return None
+    return "{" + "_".join(names[:3]) + "}"
 
 
 def _indexed_expr_to_placeholder(expr: str) -> str | None:
@@ -1631,6 +1996,9 @@ def _indexed_expr_to_placeholder(expr: str) -> str | None:
             return "{firstName}"
         if index == "1":
             return "{secondName}"
+    index_slug = re.sub(r"[^A-Za-z0-9]+", "_", index.replace("-", "minus_")).strip("_")
+    if index_slug:
+        return "{" + name + "_" + index_slug + "}"
     return "{" + name + "}"
 
 

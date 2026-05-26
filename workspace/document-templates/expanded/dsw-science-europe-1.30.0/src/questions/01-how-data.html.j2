@@ -210,15 +210,9 @@
           {%- if refDataUseReply == uuids.refDataUseYesAUuid  %}
 
             {# identification #}
-            <p>We will re-use this standard reference data
+            {# __tr_branch_sentence_original:PHA-V2Ugd2lsbCByZS11c2UgdGhpcyBzdGFuZGFyZCByZWZlcmVuY2UgZGF0YQogICAgICAgICAgICB7JS0gaWYgcmVmRGF0YVdoZXJlIC0lfQogICAgICAgICAgICAgIHt7IiAifX1hdmFpbGFibGUgdmlhOnt7IiAifX0KICAgICAgICAgICAgICB7JS0gaWYgcmVmRGF0YVdoZXJlLnN0YXJ0c3dpdGgoImh0dHA6Ly8iKSBvciByZWZEYXRhV2hlcmUuc3RhcnRzd2l0aCgiaHR0cHM6Ly8iKSBvciByZWZEYXRhV2hlcmUuc3RhcnRzd2l0aCgiZnRwOi8vIikgLSV9CiAgICAgICAgICAgICAgICA8YSBocmVmPSJ7eyByZWZEYXRhV2hlcmUgfX0iIHRhcmdldD0iX2JsYW5rIj57eyByZWZEYXRhV2hlcmUgfX0gPC9hPi4KICAgICAgICAgICAgICB7JS0gZWxzZSAtJX0KICAgICAgICAgICAgICAgIHt7IHJlZkRhdGFXaGVyZSB9fQogICAgICAgICAgICAgeyUtIGVuZGlmIC0lfQogICAgICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAKICAgICAgICAgICAgeyMgdXNhZ2UgI30KICAgICAgICAgICAgeyUtIHNldCByZWZEYXRhVXNhZ2VRID0gWyByZWZEYXRhVXNlZFByZWZpeCwgdXVpZHMucmVmRGF0YVVzYWdlUVV1aWRdfHJlcGx5X3BhdGggLSV9CiAgICAgICAgICAgIHslLSBzZXQgcmVmRGF0YVVzYWdlUmVwbHkgPSByZXBsaWVzTWFwW3JlZkRhdGFVc2FnZVFdfHJlcGx5X3N0cl92YWx1ZSAgLSV9CiAgICAgICAgICAgIHslLSBpZiByZWZEYXRhVXNhZ2VSZXBseSAtJX0KICAgICAgICAgICAgICAgIHt7KyIgIn19aW4gb3JkZXIgdG8gInt7IHJlZkRhdGFVc2FnZVJlcGx5fX0iCiAgICAgICAgICAgIHslLSBlbmRpZiAtJX0KICAgICAgICAgICAgLjwvcD4= #}{%- if refDataWhere.startswith("http://") or refDataWhere.startswith("https://") or refDataWhere.startswith("ftp://") -%}<p>We will re-use this standard reference data
             {%- if refDataWhere -%}
-              {{" "}}available via:{{" "}}
-              {%- if refDataWhere.startswith("http://") or refDataWhere.startswith("https://") or refDataWhere.startswith("ftp://") -%}
-                <a href="{{ refDataWhere }}" target="_blank">{{ refDataWhere }} </a>.
-              {%- else -%}
-                {{ refDataWhere }}
-             {%- endif -%}
-            {%- endif -%}
+              {{" "}}available via:{{" "}}<a href="{{ refDataWhere }}" target="_blank">{{ refDataWhere }} </a>.{%- endif -%}
     
             {# usage #}
             {%- set refDataUsageQ = [ refDataUsedPrefix, uuids.refDataUsageQUuid]|reply_path -%}
@@ -226,7 +220,17 @@
             {%- if refDataUsageReply -%}
                 {{+" "}}in order to "{{ refDataUsageReply}}"
             {%- endif -%}
-            .</p>
+            .</p>{%- else -%}<p>We will re-use this standard reference data
+            {%- if refDataWhere -%}
+              {{" "}}available via:{{" "}}{{ refDataWhere }}{%- endif -%}
+    
+            {# usage #}
+            {%- set refDataUsageQ = [ refDataUsedPrefix, uuids.refDataUsageQUuid]|reply_path -%}
+            {%- set refDataUsageReply = repliesMap[refDataUsageQ]|reply_str_value  -%}
+            {%- if refDataUsageReply -%}
+                {{+" "}}in order to "{{ refDataUsageReply}}"
+            {%- endif -%}
+            .</p>{%- endif -%}{# __tr_branch_sentence_original:end #}
     
             {# version #}
             {%- set refDataVersionedPath = [refDataUsedPrefix, uuids.refDataVersionedQUuid]|reply_path -%}
@@ -361,15 +365,9 @@
         {%- if nrefDataUseReply == uuids.nrefDataUseYesAUuid %}
 
           {# identification #}
-          <p>We will re-use this non-referece data 
+          {# __tr_branch_sentence_original:PHA-V2Ugd2lsbCByZS11c2UgdGhpcyBub24tcmVmZXJlY2UgZGF0YSAKICAgICAgICAgIHslLSBpZiBucmVmRGF0YVdoZXJlIC0lfQogICAgICAgICB7eyIgIn19IGF2YWlsYWJsZSB2aWE6e3siICJ9fQogICAgICAgICAgICB7JS0gaWYgbnJlZkRhdGFXaGVyZS5zdGFydHN3aXRoKCJodHRwOi8vIikgb3IgbnJlZkRhdGFXaGVyZS5zdGFydHN3aXRoKCJodHRwczovLyIpIG9yIG5yZWZEYXRhV2hlcmUuc3RhcnRzd2l0aCgiZnRwOi8vIikgLSV9CiAgICAgICAgICAgICAgPGEgaHJlZj0ie3sgbnJlZkRhdGFXaGVyZSB9fSIgdGFyZ2V0PSJfYmxhbmsiPnt7IG5yZWZEYXRhV2hlcmUgfX0gPC9hPi4KICAgICAgICAgICAgeyUtIGVsc2UgLSV9CiAgICAgICAgICAgICAge3sgbnJlZkRhdGFXaGVyZSB9fQogICAgICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAKICAgICAgICAgIHsjIHVzYWdlICN9CiAgICAgICAgICB7JS0gc2V0IG5yZWZEYXRhVXNhZ2VRID0gW25yZWZEYXRhVXNlZFByZWZpeCwgdXVpZHMubnJlZkRhdGFVc2FnZVFVdWlkXXxyZXBseV9wYXRoICAtJX0KICAgICAgICAgIHslLSBzZXQgbnJlZkRhdGFVc2FnZVJlcGx5ID0gcmVwbGllc01hcFtucmVmRGF0YVVzYWdlUV18cmVwbHlfc3RyX3ZhbHVlIC0lfQogICAgICAgICAgeyUtIGlmIG5yZWZEYXRhVXNhZ2VSZXBseSAtJX0KICAgICAgICAgICAge3srIiAifX1pbiBvcmRlciB0byAie3sgbnJlZkRhdGFVc2FnZVJlcGx5fX0iCiAgICAgICAgICB7JS0gZW5kaWYgLSV9CiAgICAgICAgICAuPC9wPg== #}{%- if nrefDataWhere.startswith("http://") or nrefDataWhere.startswith("https://") or nrefDataWhere.startswith("ftp://") -%}<p>We will re-use this non-referece data 
           {%- if nrefDataWhere -%}
-         {{" "}} available via:{{" "}}
-            {%- if nrefDataWhere.startswith("http://") or nrefDataWhere.startswith("https://") or nrefDataWhere.startswith("ftp://") -%}
-              <a href="{{ nrefDataWhere }}" target="_blank">{{ nrefDataWhere }} </a>.
-            {%- else -%}
-              {{ nrefDataWhere }}
-            {%- endif -%}
-          {%- endif -%}
+         {{" "}} available via:{{" "}}<a href="{{ nrefDataWhere }}" target="_blank">{{ nrefDataWhere }} </a>.{%- endif -%}
     
           {# usage #}
           {%- set nrefDataUsageQ = [nrefDataUsedPrefix, uuids.nrefDataUsageQUuid]|reply_path  -%}
@@ -377,7 +375,17 @@
           {%- if nrefDataUsageReply -%}
             {{+" "}}in order to "{{ nrefDataUsageReply}}"
           {%- endif -%}
-          .</p>
+          .</p>{%- else -%}<p>We will re-use this non-referece data 
+          {%- if nrefDataWhere -%}
+         {{" "}} available via:{{" "}}{{ nrefDataWhere }}{%- endif -%}
+    
+          {# usage #}
+          {%- set nrefDataUsageQ = [nrefDataUsedPrefix, uuids.nrefDataUsageQUuid]|reply_path  -%}
+          {%- set nrefDataUsageReply = repliesMap[nrefDataUsageQ]|reply_str_value -%}
+          {%- if nrefDataUsageReply -%}
+            {{+" "}}in order to "{{ nrefDataUsageReply}}"
+          {%- endif -%}
+          .</p>{%- endif -%}{# __tr_branch_sentence_original:end #}
 
           {# Which part of the non-reference data we will use #}
           {%- set nrefDataComplete = [nrefDataUsedPrefix, uuids.nrefDataCompleteQUuid]|reply_path  -%}

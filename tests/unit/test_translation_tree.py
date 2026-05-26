@@ -10,6 +10,7 @@ import pytest
 from dsw_document_template_tool.template_transform import expand_template_dir
 from dsw_document_template_tool.translation_tree import (
     TranslationTreeError,
+    audit_translation_tree,
     export_translation_tree,
     sync_translation_tree,
 )
@@ -162,7 +163,8 @@ def test_export_translation_tree_splits_nested_wrapper_into_multiple_units(
     assert "available at" in joined_docs
     assert "No tools." in joined_docs
     assert "Need tools:" in outline
-    assert "{tool}, available at {tool_pid}." in joined_docs
+    assert "available at {tool_pid}" in joined_docs
+    assert "{%" not in joined_docs
     assert len(docs) >= 3
 
 
@@ -218,7 +220,38 @@ def test_export_translation_tree_skips_dynamic_contact_rows(tmp_path: Path) -> N
     assert "(name not given)" in joined_docs
     assert "(name not given)" in outline
     assert "formatEmail" not in joined_docs
-    assert "{value}, {value}" not in joined_docs
+
+
+def test_export_translation_tree_does_not_expose_raw_jinja_blocks(tmp_path: Path) -> None:
+    """Translator-facing blocks should not ask translators to preserve Jinja code."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+<p>
+  {% set fragments = [] %}
+  {% do fragments.append("machine literal") %}
+  Visible prefix:
+  {% if enabled %}
+    enabled sentence.
+  {% else %}
+    disabled sentence.
+  {% endif %}
+</p>
+<p>Plain {{ value }} sentence.</p>
+""",
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    docs = _read_translation_docs(tree_dir)
+    assert docs
+    assert all("{%" not in doc for doc in docs)
+    assert all("{{" not in doc for doc in docs)
+    assert audit_translation_tree(tree_dir=tree_dir, source_dir=expanded_dir) == []
 
 
 def test_export_translation_tree_includes_user_facing_jinja_literals(
@@ -521,6 +554,25 @@ def test_export_translation_tree_excludes_html_entity_punctuation_units(
     assert "ndash" not in joined_docs
 
 
+def test_export_translation_tree_preserves_url_like_sentence_text(tmp_path: Path) -> None:
+    """Sentence normalization should not corrupt URL-like examples."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+<p>All project web services are accessible via secure HTTP (https://...).</p>
+""",
+    )
+
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    sentences = _extract_sentence_list(_read_translation_docs(tree_dir))
+    assert sentences == ["All project web services are accessible via secure HTTP (https://...)."]
+
+
 def test_sync_translation_tree_applies_translations_back_to_template(tmp_path: Path) -> None:
     """Translator edits should rebuild a translated expanded template."""
 
@@ -715,7 +767,7 @@ def test_sync_translation_tree_rejects_unknown_translator_placeholder(
 def test_sync_translation_tree_rejects_unexpected_raw_jinja_placeholder(
     tmp_path: Path,
 ) -> None:
-    """New raw Jinja variables should not be introduced from translation text."""
+    """Translator edits should use shorthand placeholders instead of raw Jinja."""
 
     compact_dir = _write_compact_template(
         tmp_path,
@@ -733,10 +785,10 @@ def test_sync_translation_tree_rejects_unexpected_raw_jinja_placeholder(
     document_path = next(tree_dir.rglob("translation.md"))
     _write_translation_block(
         document_path,
-        "<p>可透過 {{ pid }} / {{ unexpectedPid }} 取得。</p>",
+        "<p>可透過 {{ pid }} 取得。</p>",
     )
 
-    with pytest.raises(TranslationTreeError, match=r"\{unexpectedPid\}"):
+    with pytest.raises(TranslationTreeError, match="raw Jinja"):
         sync_translation_tree(
             tree_dir=tree_dir,
             source_dir=expanded_dir,
@@ -885,3 +937,26 @@ def test_sync_translation_tree_reports_deleted_translation_document(
             source_dir=expanded_dir,
             output_dir=translated_expanded_dir,
         )
+
+
+def test_audit_translation_tree_reports_raw_jinja_translation(tmp_path: Path) -> None:
+    """CI should point at translation files that contain executable Jinja."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+<p>Available via {{ pid }}.</p>
+""",
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+    document_path = next(tree_dir.rglob("translation.md"))
+    _write_translation_block(document_path, "<p>可透過 {{ pid }} 取得。</p>")
+
+    issues = audit_translation_tree(tree_dir=tree_dir, source_dir=expanded_dir)
+
+    assert [issue.code for issue in issues] == ["raw-jinja-in-translation"]
+    assert "translation.md" in issues[0].location

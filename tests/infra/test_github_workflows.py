@@ -104,6 +104,8 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
     assert "github.event.pull_request.head.ref" in workflow_text
     assert 'src/transform_template.py" expand' in workflow_text
     assert 'src/translation_tree.py" export' in workflow_text
+    assert 'src/translation_tree.py" audit' in workflow_text
+    assert "Translation block audit failed" in workflow_text
     assert "Auto-commit repaired translation inputs" in workflow_text
     assert "chore(sync): refresh document template translations" in workflow_text
     assert 'git add "$EXPANDED_TEMPLATE_DIR" "$TRANSLATION_TREE_DIR"' in workflow_text

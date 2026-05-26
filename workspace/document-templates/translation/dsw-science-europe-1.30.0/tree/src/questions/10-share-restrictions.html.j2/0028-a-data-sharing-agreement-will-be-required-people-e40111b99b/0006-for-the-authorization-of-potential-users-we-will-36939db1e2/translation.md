@@ -11,7 +11,7 @@
 ### Sentence (en)
 
 ```text
-For the authorization of potential users, we will make special arrangements{value}
+For the authorization of potential users, we will make special arrangements{legalReasonsAuthorizeOther}
 ```
 
 ### Translation (zh_Hant)

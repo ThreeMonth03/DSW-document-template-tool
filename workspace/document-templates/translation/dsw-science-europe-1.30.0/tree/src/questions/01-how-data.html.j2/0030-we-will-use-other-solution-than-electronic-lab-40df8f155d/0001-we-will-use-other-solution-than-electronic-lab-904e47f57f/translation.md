@@ -11,7 +11,7 @@
 ### Sentence (en)
 
 ```text
-We will use other solution than (electronic) lab notebooks to make sure that there is good provenance of the data analysis{value}
+We will use other solution than (electronic) lab notebooks to make sure that there is good provenance of the data analysis{provenanceOther}
 ```
 
 ### Translation (zh_Hant)

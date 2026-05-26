@@ -11,7 +11,7 @@
 ### Sentence (en)
 
 ```text
-It is available under specific restrictions, which we will follow in our project{value}
+It is available under specific restrictions, which we will follow in our project{refDataConditionsOther}
 ```
 
 ### Translation (zh_Hant)

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 
 from dsw_document_template_tool.translation_tree import (
+    audit_translation_tree,
     export_translation_tree,
     sync_translation_tree,
 )
@@ -49,6 +50,13 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "--template-version",
         help="Optional version to write into the translated template.json.",
     )
+
+    audit_parser = subparsers.add_parser(
+        "audit",
+        help="Check that translation blocks are safe for translators to edit.",
+    )
+    audit_parser.add_argument("--tree", required=True, help="Translation tree directory.")
+    audit_parser.add_argument("--source", required=True, help="Expanded workspace directory.")
     return parser
 
 
@@ -61,6 +69,17 @@ def main() -> None:
     if args.command == "export":
         output_dir = export_translation_tree(source_dir=args.source, output_dir=args.output)
         print(f"SUCCESS: Translation tree written to {output_dir}")
+        return
+
+    if args.command == "audit":
+        issues = audit_translation_tree(tree_dir=args.tree, source_dir=args.source)
+        if issues:
+            print(f"FAILURE: Found {len(issues)} unsafe translation block issue(s)")
+            for issue in issues:
+                print(f"- {issue.code}: {issue.location}")
+                print(f"  {issue.message}")
+            raise SystemExit(1)
+        print("SUCCESS: Translation tree is safe for translator edits")
         return
 
     output_dir = sync_translation_tree(

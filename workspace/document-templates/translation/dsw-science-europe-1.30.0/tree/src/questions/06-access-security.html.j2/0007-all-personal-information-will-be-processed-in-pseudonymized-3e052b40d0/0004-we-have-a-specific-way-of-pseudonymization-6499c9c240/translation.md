@@ -11,7 +11,7 @@
 ### Sentence (en)
 
 ```text
-We have a specific way of pseudonymization{value}
+We have a specific way of pseudonymization{risksPseudonymizationAnother}
 ```
 
 ### Translation (zh_Hant)

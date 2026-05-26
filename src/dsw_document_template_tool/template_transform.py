@@ -616,6 +616,15 @@ def _rewrite_inner_common_prefix_branch(
             group=groups[0],
         )
 
+    optional_groups = _collect_top_level_optional_rewrite_groups(tokens=inner_tokens)
+    if len(optional_groups) == 1:
+        return _rewrite_single_alternative_branch_group(
+            inner_text=inner_text,
+            opening_tag=opening_tag,
+            closing_tag=closing_tag,
+            group=optional_groups[0],
+        )
+
     return _rewrite_single_choice_optional_branch_groups(
         inner_text=inner_text,
         opening_tag=opening_tag,
@@ -941,7 +950,7 @@ def _jinja_block_inner(token_text: str) -> str:
 
 
 def _is_simple_branch_sentence_fragment(source_text: str) -> bool:
-    if not _contains_translatable_text(source_text):
+    if not (_contains_translatable_text(source_text) or _visible_words(source_text)):
         return False
     tokens = _lex_source_tokens(source_text)
     for token in tokens:
