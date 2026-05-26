@@ -198,13 +198,44 @@ jobs:
         working-directory: tooling-repo
         run: make stop-ci-dsw
 
-      # `dsw-tdk package` generates UUID/timestamp metadata inside the zip, so
-      # do not use `git diff` on the zip unless your repo normalizes packages.
-      # If your repo commits the translated-expanded directory, uncomment this:
-      #
-      # - name: Check translated output directory is committed
-      #   working-directory: template-repo
-      #   run: git diff --exit-code -- "$TRANSLATED_TEMPLATE_DIR"
+      - name: Auto-commit generated outputs
+        working-directory: template-repo
+        env:
+          TARGET_REF: >-
+            ${{ github.event_name == 'pull_request' &&
+            github.event.pull_request.head.ref || 'master' }}
+        run: |
+          set -euo pipefail
+          content_paths=("$TRANSLATED_TEMPLATE_DIR")
+          output_paths=("$TRANSLATED_TEMPLATE_DIR" "$TRANSLATED_TEMPLATE_PACKAGE")
+          if [ -n "$PROJECT_RENDER_OUTPUT" ]; then
+            content_paths+=("$PROJECT_RENDER_OUTPUT" "$PROJECT_RENDER_OUTPUT.json")
+            output_paths+=("$PROJECT_RENDER_OUTPUT" "$PROJECT_RENDER_OUTPUT.json")
+          fi
+
+          # `dsw-tdk package` embeds UUID/timestamp metadata in the zip. Avoid
+          # committing zip-only churn when the generated directory/PDF did not
+          # actually change.
+          if [ -z "$(git status --short -- "${content_paths[@]}")" ]; then
+            if [ -n "$(git status --short -- "$TRANSLATED_TEMPLATE_PACKAGE")" ]; then
+              git checkout -- "$TRANSLATED_TEMPLATE_PACKAGE"
+            fi
+            echo "No generated output changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${output_paths[@]}"
+          git commit -m "chore(sync): refresh generated document outputs"
+          git push origin "HEAD:$TARGET_REF"
+
+          {
+            echo "## Auto-committed generated outputs"
+            echo
+            echo "The workflow refreshed the translated document template and demo"
+            echo "project render, then pushed the output commit back to \`$TARGET_REF\`."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload translated template package
         uses: actions/upload-artifact@v4

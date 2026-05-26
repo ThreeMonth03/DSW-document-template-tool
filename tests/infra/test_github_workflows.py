@@ -113,11 +113,16 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
     assert "src/render_project.py" in workflow_text
     assert "make ci-dsw-logs" in workflow_text
     assert "make stop-ci-dsw" in workflow_text
+    assert "Auto-commit generated outputs" in workflow_text
+    assert "chore(sync): refresh generated document outputs" in workflow_text
+    assert "content_paths=" in workflow_text
+    assert 'git add "${output_paths[@]}"' in workflow_text
+    assert "zip-only churn" in workflow_text
     assert '"$TRANSLATION_TREE_DIR/.translation-tree"' in workflow_text
     assert '"$TRANSLATION_TREE_DIR/tree"' in workflow_text
     assert "outline.md" in workflow_text
     assert "actions/upload-artifact@v4" in workflow_text
-    assert "do not use `git diff` on the zip" in workflow_text
+    assert "generated document outputs" in workflow_text
 
     project_ref_path = repo_root / workflow["env"]["PROJECT_REF"]
     assert project_ref_path.is_file()
