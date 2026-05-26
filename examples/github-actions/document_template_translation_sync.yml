@@ -253,16 +253,80 @@ jobs:
           set -euo pipefail
           content_paths=("$TRANSLATED_TEMPLATE_DIR")
           output_paths=("$TRANSLATED_TEMPLATE_DIR" "$TRANSLATED_TEMPLATE_PACKAGE")
+          render_paths=()
           if [ -n "$PROJECT_RENDER_OUTPUT" ]; then
-            output_paths+=("$PROJECT_RENDER_OUTPUT")
-            output_paths+=("$PROJECT_RENDER_OUTPUT.json")
+            render_paths=("$PROJECT_RENDER_OUTPUT" "$PROJECT_RENDER_OUTPUT.json")
+            output_paths+=("${render_paths[@]}")
           fi
 
           # `dsw-tdk package` embeds UUID/timestamp metadata in the zip. Avoid
           # committing zip/PDF-only churn when the translated template directory
           # did not actually change. Keep those fresh files in the workspace so
           # the artifact upload still contains the latest package/render preview.
+          committed_render_is_current() {
+            if [ -z "$PROJECT_RENDER_OUTPUT" ]; then
+              return 0
+            fi
+
+            EXPECTED_SOURCE_TEMPLATE_ID="${TRANSLATED_TEMPLATE_ORGANIZATION_ID}:${TRANSLATED_TEMPLATE_ID}:${TRANSLATED_TEMPLATE_VERSION}" \
+            EXPECTED_STAGED_TEMPLATE_ID="${TRANSLATED_TEMPLATE_ORGANIZATION_ID}:${TRANSLATED_TEMPLATE_ID}-project-render:${TRANSLATED_TEMPLATE_VERSION}" \
+            PROJECT_RENDER_OUTPUT="$PROJECT_RENDER_OUTPUT" python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+
+          render_output = os.environ["PROJECT_RENDER_OUTPUT"]
+          expected_source = os.environ["EXPECTED_SOURCE_TEMPLATE_ID"]
+          expected_staged = os.environ["EXPECTED_STAGED_TEMPLATE_ID"]
+
+          result = subprocess.run(
+              ["git", "show", f"HEAD:{render_output}.json"],
+              check=False,
+              stdout=subprocess.PIPE,
+              stderr=subprocess.DEVNULL,
+              text=True,
+          )
+          if result.returncode != 0:
+              sys.exit(1)
+
+          try:
+              metadata = json.loads(result.stdout)
+          except json.JSONDecodeError:
+              sys.exit(1)
+
+          if metadata.get("source_template_id") != expected_source:
+              sys.exit(1)
+          if metadata.get("staged_template_id") != expected_staged:
+              sys.exit(1)
+
+          pdf_exists = subprocess.run(
+              ["git", "cat-file", "-e", f"HEAD:{render_output}"],
+              check=False,
+              stdout=subprocess.DEVNULL,
+              stderr=subprocess.DEVNULL,
+          )
+          sys.exit(0 if pdf_exists.returncode == 0 else 1)
+          PY
+          }
+
           if [ -z "$(git status --short -- "${content_paths[@]}")" ]; then
+            if [ "${#render_paths[@]}" -gt 0 ] && ! committed_render_is_current; then
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add "${render_paths[@]}"
+              git commit -m "chore(sync): refresh sample project render"
+              git push origin "HEAD:$TARGET_REF"
+
+              {
+                echo "## Auto-committed sample project render"
+                echo
+                echo "The translated template content was already committed, but the"
+                echo "checked-in demo project render was stale and has been refreshed."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+
             echo "No translated template content changes to commit."
             exit 0
           fi
