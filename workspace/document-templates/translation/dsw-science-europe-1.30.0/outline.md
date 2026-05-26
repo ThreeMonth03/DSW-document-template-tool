@@ -1136,7 +1136,7 @@
 
           [T] [translation](<tree/src/questions/02-what-data.html.j2/0019-it-is-a-standardized-format-we-are-not-5d318252b5/0007-we-will-have-only-a-small-amount-of-83e279de41/translation.md>)
 
-- [ ] [file] src/questions/03-docs-metadata.html.j2 (0/45)
+- [ ] [file] src/questions/03-docs-metadata.html.j2 (0/42)
 
   [J2] `src/questions/03-docs-metadata.html.j2`
 
@@ -1180,41 +1180,29 @@
 
           [T] [translation](<tree/src/questions/03-docs-metadata.html.j2/0005-ddi-data-documentation-initiative-f2154856cf/0001-ddi-data-documentation-initiative-e60e6f8ff8/translation.md>)
 
-    - [ ] [wrapper] 0006-we-will-be-documenting-the-data-with-metadata-a67e0d8f0a (0/2)
+    - [ ] [wrapper] 0006-we-will-be-documenting-the-data-with-metadata-de9c7537f1 (0/1)
 
-      [W] `0006-we-will-be-documenting-the-data-with-metadata-a67e0d8f0a`
+      [W] `0006-we-will-be-documenting-the-data-with-metadata-de9c7537f1`
 
-        - [ ] [unit] 0001-we-will-be-documenting-the-data-with-e151ca9f01: We will be documenting the data with
+        - [ ] [unit] 0001-we-will-be-documenting-the-data-with-metadata-6a6a49e956: We will be documenting the data with {metadataStandards_0} metadata standard.
 
-          [T] [translation](<tree/src/questions/03-docs-metadata.html.j2/0006-we-will-be-documenting-the-data-with-metadata-a67e0d8f0a/0001-we-will-be-documenting-the-data-with-e151ca9f01/translation.md>)
+          [T] [translation](<tree/src/questions/03-docs-metadata.html.j2/0006-we-will-be-documenting-the-data-with-metadata-de9c7537f1/0001-we-will-be-documenting-the-data-with-metadata-6a6a49e956/translation.md>)
 
-        - [ ] [unit] 0002-metadata-standard-caad02fc0d: metadata standard.
+    - [ ] [wrapper] 0007-we-will-be-documenting-the-data-with-and-ee22d12d70 (0/1)
 
-          [T] [translation](<tree/src/questions/03-docs-metadata.html.j2/0006-we-will-be-documenting-the-data-with-metadata-a67e0d8f0a/0002-metadata-standard-caad02fc0d/translation.md>)
+      [W] `0007-we-will-be-documenting-the-data-with-and-ee22d12d70`
 
-    - [ ] [wrapper] 0007-we-will-be-documenting-the-data-with-and-ff994666d2 (0/2)
+        - [ ] [unit] 0001-we-will-be-documenting-the-data-with-and-69f04b7f48: We will be documenting the data with {metadataStandards_0} and {metadataStandards_1} metadata standards.
 
-      [W] `0007-we-will-be-documenting-the-data-with-and-ff994666d2`
+          [T] [translation](<tree/src/questions/03-docs-metadata.html.j2/0007-we-will-be-documenting-the-data-with-and-ee22d12d70/0001-we-will-be-documenting-the-data-with-and-69f04b7f48/translation.md>)
 
-        - [ ] [unit] 0001-we-will-be-documenting-the-data-with-8d8b1c479a: We will be documenting the data with
+    - [ ] [wrapper] 0008-we-will-be-documenting-the-data-with-and-1526d9cdc4 (0/1)
 
-          [T] [translation](<tree/src/questions/03-docs-metadata.html.j2/0007-we-will-be-documenting-the-data-with-and-ff994666d2/0001-we-will-be-documenting-the-data-with-8d8b1c479a/translation.md>)
+      [W] `0008-we-will-be-documenting-the-data-with-and-1526d9cdc4`
 
-        - [ ] [unit] 0002-metadata-standards-f1aa89e852: metadata standards.
+        - [ ] [unit] 0001-we-will-be-documenting-the-data-with-and-d86c7e38bb: We will be documenting the data with {metadataStandards_0}, {metadataStandards_1}, and {metadataStandards_2} metadata standards.
 
-          [T] [translation](<tree/src/questions/03-docs-metadata.html.j2/0007-we-will-be-documenting-the-data-with-and-ff994666d2/0002-metadata-standards-f1aa89e852/translation.md>)
-
-    - [ ] [wrapper] 0008-we-will-be-documenting-the-data-with-and-5d08298ed3 (0/2)
-
-      [W] `0008-we-will-be-documenting-the-data-with-and-5d08298ed3`
-
-        - [ ] [unit] 0001-we-will-be-documenting-the-data-with-f11c2d75b7: We will be documenting the data with
-
-          [T] [translation](<tree/src/questions/03-docs-metadata.html.j2/0008-we-will-be-documenting-the-data-with-and-5d08298ed3/0001-we-will-be-documenting-the-data-with-f11c2d75b7/translation.md>)
-
-        - [ ] [unit] 0002-metadata-standards-ba692f601f: metadata standards.
-
-          [T] [translation](<tree/src/questions/03-docs-metadata.html.j2/0008-we-will-be-documenting-the-data-with-and-5d08298ed3/0002-metadata-standards-ba692f601f/translation.md>)
+          [T] [translation](<tree/src/questions/03-docs-metadata.html.j2/0008-we-will-be-documenting-the-data-with-and-1526d9cdc4/0001-we-will-be-documenting-the-data-with-and-d86c7e38bb/translation.md>)
 
     - [ ] [wrapper] 0009-we-will-include-keywords-and-relevant-ontology-references-f9c803c772 (0/1)
 
@@ -1640,7 +1628,7 @@
 
           [T] [translation](<tree/src/questions/05-store-backup.html.j2/0009-the-work-space-provides-sufficient-guarantees-in-terms-27ebb7360b/0006-we-will-make-automated-backups-of-all-data-fea63675b0/translation.md>)
 
-- [ ] [file] src/questions/06-access-security.html.j2 (0/45)
+- [ ] [file] src/questions/06-access-security.html.j2 (0/43)
 
   [J2] `src/questions/06-access-security.html.j2`
 
@@ -1720,37 +1708,29 @@
 
           [T] [translation](<tree/src/questions/06-access-security.html.j2/0002-project-members-will-not-store-data-or-software-483003fe8b/0016-project-members-have-been-instructed-about-both-generic-f63b8de9cf/translation.md>)
 
-    - [ ] [wrapper] 0003-the-possible-impact-of-information-is-small-e46dc55ba1 (0/2)
+    - [ ] [wrapper] 0003-the-possible-impact-of-information-is-small-37a00bb767 (0/1)
 
-      [W] `0003-the-possible-impact-of-information-is-small-e46dc55ba1`
+      [W] `0003-the-possible-impact-of-information-is-small-37a00bb767`
 
-        - [ ] [unit] 0001-the-possible-impact-of-information-c9d9d24283: The possible impact of information
+        - [ ] [unit] 0001-the-possible-impact-of-information-is-small-a50ac0d1d3: The possible impact of information {risks} is small
 
-          [T] [translation](<tree/src/questions/06-access-security.html.j2/0003-the-possible-impact-of-information-is-small-e46dc55ba1/0001-the-possible-impact-of-information-c9d9d24283/translation.md>)
+          [T] [translation](<tree/src/questions/06-access-security.html.j2/0003-the-possible-impact-of-information-is-small-37a00bb767/0001-the-possible-impact-of-information-is-small-a50ac0d1d3/translation.md>)
 
-        - [ ] [unit] 0002-is-small-c7ee45eb22: is small
+    - [ ] [wrapper] 0004-the-risk-of-information-is-acceptably-low-354938ec04 (0/1)
 
-          [T] [translation](<tree/src/questions/06-access-security.html.j2/0003-the-possible-impact-of-information-is-small-e46dc55ba1/0002-is-small-c7ee45eb22/translation.md>)
+      [W] `0004-the-risk-of-information-is-acceptably-low-354938ec04`
 
-    - [ ] [wrapper] 0004-the-risk-of-information-is-acceptably-low-c49d011466 (0/2)
+        - [ ] [unit] 0001-the-risk-of-information-is-acceptably-low-0eb52e9fad: The risk of information {risks} is acceptably low
 
-      [W] `0004-the-risk-of-information-is-acceptably-low-c49d011466`
+          [T] [translation](<tree/src/questions/06-access-security.html.j2/0004-the-risk-of-information-is-acceptably-low-354938ec04/0001-the-risk-of-information-is-acceptably-low-0eb52e9fad/translation.md>)
 
-        - [ ] [unit] 0001-the-risk-of-information-6536205e46: The risk of information
+    - [ ] [wrapper] 0005-we-will-mitigate-the-risk-of-information-19647b203a (0/1)
 
-          [T] [translation](<tree/src/questions/06-access-security.html.j2/0004-the-risk-of-information-is-acceptably-low-c49d011466/0001-the-risk-of-information-6536205e46/translation.md>)
+      [W] `0005-we-will-mitigate-the-risk-of-information-19647b203a`
 
-        - [ ] [unit] 0002-is-acceptably-low-c7e63ff3e3: is acceptably low
+        - [ ] [unit] 0001-we-will-mitigate-the-risk-of-information-d251409155: We will mitigate the risk of information {risks}
 
-          [T] [translation](<tree/src/questions/06-access-security.html.j2/0004-the-risk-of-information-is-acceptably-low-c49d011466/0002-is-acceptably-low-c7e63ff3e3/translation.md>)
-
-    - [ ] [wrapper] 0005-we-will-mitigate-the-risk-of-information-888c76925d (0/1)
-
-      [W] `0005-we-will-mitigate-the-risk-of-information-888c76925d`
-
-        - [ ] [unit] 0001-we-will-mitigate-the-risk-of-information-b50aac1e57: We will mitigate the risk of information
-
-          [T] [translation](<tree/src/questions/06-access-security.html.j2/0005-we-will-mitigate-the-risk-of-information-888c76925d/0001-we-will-mitigate-the-risk-of-information-b50aac1e57/translation.md>)
+          [T] [translation](<tree/src/questions/06-access-security.html.j2/0005-we-will-mitigate-the-risk-of-information-19647b203a/0001-we-will-mitigate-the-risk-of-information-d251409155/translation.md>)
 
     - [ ] [wrapper] 0006-we-are-not-using-any-personal-information-04e23212a9 (0/1)
 

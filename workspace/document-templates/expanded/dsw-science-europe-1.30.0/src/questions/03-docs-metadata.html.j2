@@ -36,13 +36,13 @@
         {%- if metadataStandardsDDIAUuid == uuids.metadataStandardsDDIYesAUuid -%}{# __tr_block_0004:start #}
           {%- do metadataStandards.append("DDI (Data Documentation Initiative)") -%}
         {# __tr_block_0004:end #}{%- endif -%}
-        {%- if metadataStandards|length == 1 -%}{# __tr_block_0005:start #}
-          {%- do metadataSentences.append("We will be documenting the data with " ~ metadataStandards[0] ~ " metadata standard.") -%}
-        {# __tr_block_0005:end #}{%- elif metadataStandards|length == 2 -%}{# __tr_block_0006:start #}
-          {%- do metadataSentences.append("We will be documenting the data with " ~ metadataStandards[0] ~ " and " ~ metadataStandards[1] ~ " metadata standards.") -%}
-        {# __tr_block_0006:end #}{%- elif metadataStandards|length == 3 -%}{# __tr_block_0007:start #}
-          {%- do metadataSentences.append("We will be documenting the data with " ~ metadataStandards[0] ~ ", " ~ metadataStandards[1] ~ ", and " ~ metadataStandards[2] ~ " metadata standards.") -%}
-        {# __tr_block_0007:end #}{%- endif -%}
+        {%- if metadataStandards|length == 1 -%}
+          {# __tr_append_sentence_original:eyUtIGRvIG1ldGFkYXRhU2VudGVuY2VzLmFwcGVuZCgiV2Ugd2lsbCBiZSBkb2N1bWVudGluZyB0aGUgZGF0YSB3aXRoICIgfiBtZXRhZGF0YVN0YW5kYXJkc1swXSB-ICIgbWV0YWRhdGEgc3RhbmRhcmQuIikgLSV9 #}{%- set __tr_append_sentence_0000 -%}{# __tr_block_0005:start #}We will be documenting the data with {{ metadataStandards[0] }} metadata standard.{# __tr_block_0005:end #}{%- endset -%}{%- do metadataSentences.append(__tr_append_sentence_0000) -%}{# __tr_append_sentence_original:end -#}
+        {%- elif metadataStandards|length == 2 -%}
+          {# __tr_append_sentence_original:eyUtIGRvIG1ldGFkYXRhU2VudGVuY2VzLmFwcGVuZCgiV2Ugd2lsbCBiZSBkb2N1bWVudGluZyB0aGUgZGF0YSB3aXRoICIgfiBtZXRhZGF0YVN0YW5kYXJkc1swXSB-ICIgYW5kICIgfiBtZXRhZGF0YVN0YW5kYXJkc1sxXSB-ICIgbWV0YWRhdGEgc3RhbmRhcmRzLiIpIC0lfQ== #}{%- set __tr_append_sentence_0001 -%}{# __tr_block_0006:start #}We will be documenting the data with {{ metadataStandards[0] }} and {{ metadataStandards[1] }} metadata standards.{# __tr_block_0006:end #}{%- endset -%}{%- do metadataSentences.append(__tr_append_sentence_0001) -%}{# __tr_append_sentence_original:end -#}
+        {%- elif metadataStandards|length == 3 -%}
+          {# __tr_append_sentence_original:eyUtIGRvIG1ldGFkYXRhU2VudGVuY2VzLmFwcGVuZCgiV2Ugd2lsbCBiZSBkb2N1bWVudGluZyB0aGUgZGF0YSB3aXRoICIgfiBtZXRhZGF0YVN0YW5kYXJkc1swXSB-ICIsICIgfiBtZXRhZGF0YVN0YW5kYXJkc1sxXSB-ICIsIGFuZCAiIH4gbWV0YWRhdGFTdGFuZGFyZHNbMl0gfiAiIG1ldGFkYXRhIHN0YW5kYXJkcy4iKSAtJX0= #}{%- set __tr_append_sentence_0002 -%}{# __tr_block_0007:start #}We will be documenting the data with {{ metadataStandards[0] }}, {{ metadataStandards[1] }}, and {{ metadataStandards[2] }} metadata standards.{# __tr_block_0007:end #}{%- endset -%}{%- do metadataSentences.append(__tr_append_sentence_0002) -%}{# __tr_append_sentence_original:end -#}
+        {%- endif -%}
         {%- if metadataStandardsKeywordsAUuid == uuids.metadataStandardsKeywordsYesAUuid -%}{# __tr_block_0008:start #}
           {%- do metadataSentences.append("We will include keywords and relevant ontology references to optimize the possibility for discovery and potential reuse.") -%}
         {# __tr_block_0008:end #}{%- endif -%}

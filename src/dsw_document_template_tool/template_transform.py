@@ -47,6 +47,12 @@ BRANCH_SENTENCE_REWRITE_PATTERN = re.compile(
     r"\{# __tr_branch_sentence_original:end #\}",
     re.DOTALL,
 )
+APPEND_SENTENCE_REWRITE_PATTERN = re.compile(
+    r"\{# __tr_append_sentence_original:(?P<payload>[A-Za-z0-9_-]+=*) #\}"
+    r".*?"
+    r"\{# __tr_append_sentence_original:end -?#\}",
+    re.DOTALL,
+)
 MANIFEST_PATH = Path(".transform") / "manifest.json"
 MANIFEST_VERSION = 2
 UPSTREAM_README_NAME = "UPSTREAM-README.md"
@@ -266,7 +272,8 @@ def compact_template_dir(*, source_dir: Path, output_dir: Path) -> Path:
             )
         relative_path = Path(relative_raw)
         source_path = output_dir / relative_path
-        compacted_text = _restore_branch_sentence_rewrites(source_path.read_text(encoding="utf-8"))
+        compacted_text = _restore_append_sentence_rewrites(source_path.read_text(encoding="utf-8"))
+        compacted_text = _restore_branch_sentence_rewrites(compacted_text)
         compacted_text = GENERATED_BLOCK_PATTERN.sub(
             lambda match: generated_block_body(match),
             compacted_text,
@@ -491,6 +498,7 @@ def _repo_root() -> Path:
 
 
 def _expand_template_text(*, source_text: str) -> str:
+    source_text = _rewrite_append_sentence_literals(source_text)
     source_text = _rewrite_inline_conditional_expressions(source_text)
     source_text = _rewrite_common_prefix_branch_sentences(source_text)
     source_text = _rewrite_known_science_europe_fragments(source_text)
@@ -656,6 +664,152 @@ def _wrap_reversible_branch_sentence_rewrite(*, original: str, replacement: str)
         f"{replacement}"
         "{# __tr_branch_sentence_original:end #}"
     )
+
+
+def _rewrite_append_sentence_literals(source_text: str) -> str:
+    """Turn concatenated append literals into editable sentence set-blocks.
+
+    Upstream templates sometimes build rendered sentences with Jinja-only code,
+    e.g. `sentences.append("Before " ~ value ~ " after.")`.  Exporting each
+    string literal separately makes translators handle broken fragments.  The
+    set-block keeps rendered output equivalent while exposing one complete
+    sentence with normal `{{ value }}` placeholders.
+    """
+
+    append_index = 0
+
+    def replace(match: re.Match[str]) -> str:
+        nonlocal append_index
+        original = match.group(0)
+        if not (original.startswith("{%-") and original.rstrip().endswith("-%}")):
+            return original
+
+        inner = _jinja_block_inner(original)
+        append_match = re.fullmatch(
+            r"(?:(?P<mode>do)|set\s+(?P<set_name>[A-Za-z_][A-Za-z0-9_]*)\s*=)\s+"
+            r"(?P<target>[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)"
+            r"\.append\((?P<arg>.*)\)",
+            inner,
+            flags=re.DOTALL,
+        )
+        if append_match is None:
+            return original
+
+        sentence = _jinja_concat_expression_to_sentence(append_match.group("arg"))
+        if sentence is None:
+            return original
+
+        variable_name = f"__tr_append_sentence_{append_index:04d}"
+        append_index += 1
+        encoded_original = base64.urlsafe_b64encode(original.encode("utf-8")).decode("ascii")
+        target = append_match.group("target")
+        return (
+            f"{{# __tr_append_sentence_original:{encoded_original} #}}"
+            f"{{%- set {variable_name} -%}}"
+            f"{sentence}"
+            "{%- endset -%}"
+            f"{_append_sentence_rewrite_statement(append_match, target, variable_name)}"
+            "{# __tr_append_sentence_original:end -#}"
+        )
+
+    return JINJA_BLOCK_PATTERN.sub(replace, source_text)
+
+
+def _append_sentence_rewrite_statement(
+    append_match: re.Match[str],
+    target: str,
+    variable_name: str,
+) -> str:
+    if append_match.group("mode") == "do":
+        return f"{{%- do {target}.append({variable_name}) -%}}"
+    set_name = append_match.group("set_name") or "_"
+    return f"{{%- set {set_name} = {target}.append({variable_name}) -%}}"
+
+
+def _restore_append_sentence_rewrites(source_text: str) -> str:
+    """Restore original append statements when compacting a workspace."""
+
+    def replace(match: re.Match[str]) -> str:
+        try:
+            return base64.urlsafe_b64decode(match.group("payload")).decode("utf-8")
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise TemplateTransformError("Invalid append sentence rewrite marker") from exc
+
+    return APPEND_SENTENCE_REWRITE_PATTERN.sub(replace, source_text)
+
+
+def _jinja_concat_expression_to_sentence(expr: str) -> str | None:
+    parts = _split_top_level_concat(expr)
+    if len(parts) < 2:
+        return None
+
+    rendered_parts: list[str] = []
+    literal_count = 0
+    expression_count = 0
+    for part in parts:
+        literal = _literal_part_to_text(part)
+        if literal is not None:
+            if _is_translatable_jinja_literal(literal):
+                literal_count += 1
+            rendered_parts.append(literal)
+            continue
+
+        normalized = part.strip()
+        if not normalized:
+            return None
+        expression_count += 1
+        rendered_parts.append("{{ " + normalized + " }}")
+
+    if literal_count == 0 or expression_count == 0:
+        return None
+    return "".join(rendered_parts)
+
+
+def _literal_part_to_text(part: str) -> str | None:
+    stripped = part.strip()
+    if not (
+        (stripped.startswith('"') and stripped.endswith('"'))
+        or (stripped.startswith("'") and stripped.endswith("'"))
+    ):
+        return None
+    try:
+        value = ast.literal_eval(stripped)
+    except (SyntaxError, ValueError):
+        return None
+    return value if isinstance(value, str) else None
+
+
+def _split_top_level_concat(expr: str) -> list[str]:
+    parts: list[str] = []
+    quote: str | None = None
+    escape_next = False
+    bracket_depth = 0
+    start = 0
+
+    for index, char in enumerate(expr):
+        if quote is not None:
+            if escape_next:
+                escape_next = False
+            elif char == "\\":
+                escape_next = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            continue
+        if char in "([{":
+            bracket_depth += 1
+            continue
+        if char in ")]}":
+            bracket_depth = max(0, bracket_depth - 1)
+            continue
+        if char == "~" and bracket_depth == 0:
+            parts.append(expr[start:index])
+            start = index + 1
+
+    parts.append(expr[start:])
+    return parts
 
 
 def _wrap_translatable_block(block_name: str, source_text: str) -> str:

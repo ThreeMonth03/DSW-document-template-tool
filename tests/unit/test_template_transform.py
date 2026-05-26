@@ -201,6 +201,35 @@ def test_expand_rewrites_inline_fallback_literals_reversibly(tmp_path: Path) -> 
         assert _render_template(expanded_text, context) == _render_template(source_text, context)
 
 
+def test_expand_rewrites_appended_sentence_literals_reversibly(tmp_path: Path) -> None:
+    """Concatenated append strings should expose one reorderable sentence."""
+
+    compact_dir = tmp_path / "compact"
+    (compact_dir / "src").mkdir(parents=True)
+    _write_minimal_template_json(compact_dir)
+    source_text = """
+{%- set sentences = [] -%}
+{%- do sentences.append("We will document data with " ~ standard ~ " metadata standard.") -%}
+{%- set _ = sentences.append("The risk of information " ~ risk ~ " is low.") -%}
+<p>{{ sentences|join(" ") }}</p>
+""".lstrip()
+    (compact_dir / "src" / "index.html.j2").write_text(source_text, encoding="utf-8")
+
+    expanded_dir = tmp_path / "expanded"
+    rebuilt_dir = tmp_path / "rebuilt"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    compact_template_dir(source_dir=expanded_dir, output_dir=rebuilt_dir)
+
+    expanded_text = (expanded_dir / "src" / "index.html.j2").read_text(encoding="utf-8")
+    assert "__tr_append_sentence_original:" in expanded_text
+    assert "We will document data with {{ standard }} metadata standard." in expanded_text
+    assert "The risk of information {{ risk }} is low." in expanded_text
+    assert snapshot_tree(rebuilt_dir) == snapshot_tree(compact_dir)
+
+    context = {"standard": "Dublin Core", "risk": "loss"}
+    assert _render_template(expanded_text, context) == _render_template(source_text, context)
+
+
 def test_expand_rewrites_simple_common_prefix_branches_reversibly(tmp_path: Path) -> None:
     """Simple suffix alternatives should become complete branch sentences."""
 

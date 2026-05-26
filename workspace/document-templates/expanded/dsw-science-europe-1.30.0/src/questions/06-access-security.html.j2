@@ -94,17 +94,17 @@
     {# helper inline join #}
     {%- set fragments = [] -%}
     {%- if small|length > 0 -%}
-      {%- set risks = (small[:-1]|join(', ') ~ ', and ' ~ small[-1]) if small|length > 1 else small[0] -%}{# __tr_block_0002:start #}
-      {%- set _ = fragments.append("The possible impact of information " ~ risks ~ " is small") -%}
-    {# __tr_block_0002:end #}{%- endif -%}
+      {%- set risks = (small[:-1]|join(', ') ~ ', and ' ~ small[-1]) if small|length > 1 else small[0] -%}
+      {# __tr_append_sentence_original:eyUtIHNldCBfID0gZnJhZ21lbnRzLmFwcGVuZCgiVGhlIHBvc3NpYmxlIGltcGFjdCBvZiBpbmZvcm1hdGlvbiAiIH4gcmlza3MgfiAiIGlzIHNtYWxsIikgLSV9 #}{%- set __tr_append_sentence_0000 -%}{# __tr_block_0002:start #}The possible impact of information {{ risks }} is small{# __tr_block_0002:end #}{%- endset -%}{%- set _ = fragments.append(__tr_append_sentence_0000) -%}{# __tr_append_sentence_original:end -#}
+    {%- endif -%}
     {%- if low|length > 0 -%}
-      {%- set risks = (low[:-1]|join(', ') ~ ', and ' ~ low[-1]) if low|length > 1 else low[0] -%}{# __tr_block_0003:start #}
-      {%- set _ = fragments.append("The risk of information " ~ risks ~ " is acceptably low") -%}
-    {# __tr_block_0003:end #}{%- endif -%}
+      {%- set risks = (low[:-1]|join(', ') ~ ', and ' ~ low[-1]) if low|length > 1 else low[0] -%}
+      {# __tr_append_sentence_original:eyUtIHNldCBfID0gZnJhZ21lbnRzLmFwcGVuZCgiVGhlIHJpc2sgb2YgaW5mb3JtYXRpb24gIiB-IHJpc2tzIH4gIiBpcyBhY2NlcHRhYmx5IGxvdyIpIC0lfQ== #}{%- set __tr_append_sentence_0001 -%}{# __tr_block_0003:start #}The risk of information {{ risks }} is acceptably low{# __tr_block_0003:end #}{%- endset -%}{%- set _ = fragments.append(__tr_append_sentence_0001) -%}{# __tr_append_sentence_original:end -#}
+    {%- endif -%}
     {%- if will|length > 0 -%}
-      {%- set risks = (will[:-1]|join(', ') ~ ', and ' ~ will[-1]) if will|length > 1 else will[0] -%}{# __tr_block_0004:start #}
-      {%- set _ = fragments.append("We will mitigate the risk of information " ~ risks) -%}
-    {# __tr_block_0004:end #}{%- endif -%}
+      {%- set risks = (will[:-1]|join(', ') ~ ', and ' ~ will[-1]) if will|length > 1 else will[0] -%}
+      {# __tr_append_sentence_original:eyUtIHNldCBfID0gZnJhZ21lbnRzLmFwcGVuZCgiV2Ugd2lsbCBtaXRpZ2F0ZSB0aGUgcmlzayBvZiBpbmZvcm1hdGlvbiAiIH4gcmlza3MpIC0lfQ== #}{%- set __tr_append_sentence_0002 -%}{# __tr_block_0004:start #}We will mitigate the risk of information {{ risks }}{# __tr_block_0004:end #}{%- endset -%}{%- set _ = fragments.append(__tr_append_sentence_0002) -%}{# __tr_append_sentence_original:end -#}
+    {%- endif -%}
     {%- if fragments|length > 0 -%}
       <p>{{ fragments | join('. ') }}.</p>
     {%- endif -%}

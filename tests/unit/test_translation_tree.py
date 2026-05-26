@@ -298,6 +298,51 @@ def test_export_translation_tree_includes_user_facing_jinja_literals(
     assert "internal" not in joined_docs
 
 
+def test_export_translation_tree_keeps_appended_concat_sentences_together(
+    tmp_path: Path,
+) -> None:
+    """Jinja-built append sentences should expose placeholders in one unit."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+{%- set sentences = [] -%}
+{%- do sentences.append("We will document data with " ~ standard ~ " metadata standard.") -%}
+<p>{{ sentences|join(" ") }}</p>
+""",
+    )
+
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+    translated_expanded_dir = tmp_path / "translated-expanded"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    docs = sorted(tree_dir.rglob("translation.md"))
+    sentences = _extract_sentence_list(_read_translation_docs(tree_dir))
+    assert "We will document data with {standard} metadata standard." in sentences
+    assert "We will document data with" not in [sentence.strip() for sentence in sentences]
+
+    document_path = next(
+        path
+        for path in docs
+        if "We will document data with {standard} metadata standard."
+        in path.read_text(encoding="utf-8")
+    )
+    _write_translation_block(document_path, "會使用 {standard} 中繼資料標準描述資料。")
+
+    sync_translation_tree(
+        tree_dir=tree_dir,
+        source_dir=expanded_dir,
+        output_dir=translated_expanded_dir,
+    )
+
+    translated_text = (translated_expanded_dir / "src" / "index.html.j2").read_text(
+        encoding="utf-8"
+    )
+    assert "會使用 {{ standard }} 中繼資料標準描述資料。" in translated_text
+
+
 def test_export_translation_tree_keeps_control_flow_sentence_parts_together(
     tmp_path: Path,
 ) -> None:
