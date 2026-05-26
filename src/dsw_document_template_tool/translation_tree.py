@@ -81,7 +81,18 @@ CONNECTOR_ONLY_WORDS = {
 HARD_FRAGMENT_SENTENCES = {
     "available via:",
     "available with",
+    "this data.",
+    "this data are",
+    "we will use.",
 }
+HARD_FRAGMENT_PREFIXES = (
+    ", legally",
+    ", which",
+    "and we will ",
+    "but decided ",
+    "but we won't ",
+    'in order to "',
+)
 SENTENCE_TEXT_REPLACEMENTS = (
     (re.compile(r"\bbecauseit\b", re.IGNORECASE), "because it"),
     (re.compile(r"\blegaly\b", re.IGNORECASE), "legally"),
@@ -1642,7 +1653,10 @@ def _is_connector_only_translation_unit(source_text: str) -> bool:
 
 def _hard_fragment_sentence_message(source_text: str) -> str | None:
     sentence = _extract_sentence_text(source_text).strip()
-    if sentence.lower() in HARD_FRAGMENT_SENTENCES:
+    lowered_sentence = sentence.lower()
+    if lowered_sentence in HARD_FRAGMENT_SENTENCES or lowered_sentence.startswith(
+        HARD_FRAGMENT_PREFIXES
+    ):
         return (
             f"`{sentence}` is only a sentence fragment. Expand/export should keep "
             "the surrounding phrase and any placeholders in the same translation unit."

@@ -500,6 +500,7 @@ def _repo_root() -> Path:
 def _expand_template_text(*, source_text: str) -> str:
     source_text = _rewrite_append_sentence_literals(source_text)
     source_text = _rewrite_inline_conditional_expressions(source_text)
+    source_text = _rewrite_known_science_europe_source_fragments(source_text)
     source_text = _rewrite_common_prefix_branch_sentences(source_text)
     source_text = _rewrite_known_science_europe_fragments(source_text)
     tokens = _lex_source_tokens(source_text)
@@ -516,6 +517,480 @@ def _expand_template_text(*, source_text: str) -> str:
         cursor = region.end
     expanded_parts.append(source_text[cursor:])
     return "".join(expanded_parts)
+
+
+def _apply_reversible_replacements(
+    source_text: str,
+    replacements: tuple[tuple[str, str], ...],
+) -> str:
+    rewritten_text = source_text
+    for original, replacement in replacements:
+        if original not in rewritten_text:
+            continue
+        rewritten_text = rewritten_text.replace(
+            original,
+            _wrap_reversible_branch_sentence_rewrite(
+                original=original,
+                replacement=replacement,
+            ),
+            1,
+        )
+    return rewritten_text
+
+
+def _rewrite_known_science_europe_source_fragments(source_text: str) -> str:
+    """Rewrite exact upstream Science Europe fragments before generic expansion."""
+
+    ref_data_conditions_original = """
+            {%- if refDataConditionsReply %}
+             <p>This standard reference data are{{+" "}}
+              {%- if refDataConditionsReply == uuids.refDataConditionsCC0AUuid -%}
+                freely available for any use.
+              {%- elif refDataConditionsReply == uuids.refDataConditionsCCBYAUuid -%}
+                freely available with obligation to quote the source.
+              {%- elif refDataConditionsReply == uuids.refDataConditionsOtherAUuid -%}
+                available with {{" "}}
+                  {%- if refDataConditionsOtherRepl -%}
+                    following restrictions: "{{refDataConditionsOtherRepl}}".
+                  {%- else -%}
+                    {{" "}}restrictions, that will be specified.
+                  {%- endif -%}
+              {%- endif -%}
+             </p>
+            {%- endif -%}
+"""
+    ref_data_conditions_replacement = """
+            {%- if refDataConditionsReply %}
+              {%- if refDataConditionsReply == uuids.refDataConditionsCC0AUuid -%}
+                <p>This standard reference data are{{+" "}}freely available for any use.</p>
+              {%- elif refDataConditionsReply == uuids.refDataConditionsCCBYAUuid -%}
+                <p>This standard reference data are{{+" "}}freely available with obligation to quote the source.</p>
+              {%- elif refDataConditionsReply == uuids.refDataConditionsOtherAUuid -%}
+                {%- if refDataConditionsOtherRepl -%}
+                  <p>This standard reference data are{{+" "}}available with following restrictions: "{{refDataConditionsOtherRepl}}".</p>
+                {%- else -%}
+                  <p>This standard reference data are{{+" "}}available with restrictions, that will be specified.</p>
+                {%- endif -%}
+              {%- endif -%}
+            {%- endif -%}
+"""
+
+    nref_data_conditions_original = """
+          {%- if nrefDataConditionsReply %}
+            <p>This data are{{+" "}}
+            {%- if nrefDataConditionsReply == uuids.nrefDataConditionsCC0AUuid -%}
+              freely available for any use.
+            {%- elif nrefDataConditionsReply == uuids.nrefDataConditionsCCBYAUuid -%}
+              freely available with obligation to quote the source.
+            {%- elif nrefDataConditionsReply == uuids.nrefDataConditionsOtherAUuid  -%}
+              {%- set nrefDataConditionsOther = [nrefDataConditions, uuids.nrefDataConditionsOtherAUuid, uuids.nrefDataConditionsOtherQUuid]|reply_path -%}
+              {%- set nrefDataConditionsOtherReply = repliesMap[nrefDataConditionsOther]|reply_str_value -%}
+              {%- if nrefDataConditionsOtherReply -%}
+                available with{{" "}}
+                  {%- if nrefDataConditionsOtherReply -%}
+                   following restrictions: "{{nrefDataConditionsOtherReply}}".
+                  {%- else -%}
+                    {{" "}}restrictions, that will be specified.
+                  {%- endif -%}
+              {%- endif -%}
+            {%- endif -%}
+            </p>
+          {%- endif -%}
+"""
+    nref_data_conditions_replacement = """
+          {%- if nrefDataConditionsReply %}
+            {%- if nrefDataConditionsReply == uuids.nrefDataConditionsCC0AUuid -%}
+              <p>This data are{{+" "}}freely available for any use.</p>
+            {%- elif nrefDataConditionsReply == uuids.nrefDataConditionsCCBYAUuid -%}
+              <p>This data are{{+" "}}freely available with obligation to quote the source.</p>
+            {%- elif nrefDataConditionsReply == uuids.nrefDataConditionsOtherAUuid  -%}
+              {%- set nrefDataConditionsOther = [nrefDataConditions, uuids.nrefDataConditionsOtherAUuid, uuids.nrefDataConditionsOtherQUuid]|reply_path -%}
+              {%- set nrefDataConditionsOtherReply = repliesMap[nrefDataConditionsOther]|reply_str_value -%}
+              {%- if nrefDataConditionsOtherReply -%}
+                <p>This data are{{+" "}}available with following restrictions: "{{nrefDataConditionsOtherReply}}".</p>
+              {%- else -%}
+                <p>This data are{{+" "}}available with restrictions, that will be specified.</p>
+              {%- endif -%}
+            {%- endif -%}
+          {%- endif -%}
+"""
+
+    nref_personal_legal_basis_original = """
+          <p>
+            This data include personal data
+            {%- set nrefDataPersonalLegalBasis = [nrefDataPersonal, uuids.nrefDataPersonalYesAUuid, uuids.nrefDataPersonalLegalBasisQUuid]|reply_path -%}
+            {%- set nrefDataPersonalLegalBasisReply = repliesMap[nrefDataPersonalLegalBasis]|reply_str_value -%}
+            {%- if nrefDataPersonalLegalBasisReply -%}
+              , legaly based on{{+" "}}
+              {%- if nrefDataPersonalLegalBasisReply == uuids.nrefDataPersonalLegalBasisPubInterestAUuid -%}
+                public interest for processing the data under GDPR.
+              {%- elif nrefDataPersonalLegalBasisReply == uuids.nrefDataPersonalLegalBasisConsentAUuid -%}
+                consent given by the research subject for processing the data under GDPR
+                {%- set nrefDataPersonalLegalBasisReuse = [nrefDataPersonalLegalBasis, uuids.nrefDataPersonalLegalBasisConsentAUuid, uuids.nrefDataPersonalLegalBasisConsentReuseQUuid]|reply_path -%}
+                {%- set nrefDataPersonalLegalBasisReuseReply = repliesMap[nrefDataPersonalLegalBasisReuse]|reply_str_value -%}
+                {%- if nrefDataPersonalLegalBasisReuseReply -%}
+                  , which{{+" "}}
+                  {%- if nrefDataPersonalLegalBasisReuseReply == uuids.nrefDataPersonalLegalBasisConsentReuseYesAUuid -%}
+                    covers also our reuse.
+                  {%- elif nrefDataPersonalLegalBasisReuseReply == uuids.nrefDataPersonalLegalBasisConsentReuseNoAUuid -%}
+                    does not cover our reuse; therefore, new consent will be needed.
+                  {%- endif -%}
+                {%- else -%}
+                .
+                {%- endif -%}
+              {%- elif nrefDataPersonalLegalBasisReply == uuids.nrefDataPersonalLebalBasisOtherAUuid -%}
+                {%- set nrefDataPersonalLegalBasisOther = [nrefDataPersonalLegalBasis, uuids.nrefDataPersonalLebalBasisOtherAUuid, uuids.nrefDataPersonalLegalBasisOtherQUuid]|reply_path -%}
+                {%- set nrefDataPersonalLegalBasisOtherReply = repliesMap[nrefDataPersonalLegalBasisOther]|reply_str_value -%}
+                {%- if nrefDataPersonalLegalBasisOtherReply == uuids.nrefDataPersonalLegalBasisOtherLegalAUuid -%}
+                  a legal requirement (meaning a legal obligation to do this data processing).
+                {%- elif nrefDataPersonalLegalBasisOtherReply == uuids.nrefDataPersonalLegalBasisOtherVitalAUuid -%}
+                  a vital interest (meaning it needs to be done to protect the vital interests of the data subject).
+                {%- elif nrefDataPersonalLegalBasisOtherReply == uuids.nrefDataPersonalLegalBasisOtherLegitAUuid -%}
+                  a legitimate interest (meaning data subjects all expect us to do this data processing because of who we are).
+                {%- elif nrefDataPersonalLegalBasisOtherReply == uuids.nrefDataPersonalLegalBasisOtherContractAUuid -%}
+                  a requirement to fulfill our contract with the data subjects.
+                {%- endif -%}
+              {%- endif -%} 
+            {%- endif -%}
+          </p>
+"""
+    nref_personal_legal_basis_replacement = """
+          {%- set nrefDataPersonalLegalBasis = [nrefDataPersonal, uuids.nrefDataPersonalYesAUuid, uuids.nrefDataPersonalLegalBasisQUuid]|reply_path -%}
+          {%- set nrefDataPersonalLegalBasisReply = repliesMap[nrefDataPersonalLegalBasis]|reply_str_value -%}
+          {%- if nrefDataPersonalLegalBasisReply == uuids.nrefDataPersonalLegalBasisPubInterestAUuid -%}
+            <p>This data include personal data, legally based on{{+" "}}public interest for processing the data under GDPR.</p>
+          {%- elif nrefDataPersonalLegalBasisReply == uuids.nrefDataPersonalLegalBasisConsentAUuid -%}
+            {%- set nrefDataPersonalLegalBasisReuse = [nrefDataPersonalLegalBasis, uuids.nrefDataPersonalLegalBasisConsentAUuid, uuids.nrefDataPersonalLegalBasisConsentReuseQUuid]|reply_path -%}
+            {%- set nrefDataPersonalLegalBasisReuseReply = repliesMap[nrefDataPersonalLegalBasisReuse]|reply_str_value -%}
+            {%- if nrefDataPersonalLegalBasisReuseReply == uuids.nrefDataPersonalLegalBasisConsentReuseYesAUuid -%}
+              <p>This data include personal data, legally based on{{+" "}}consent given by the research subject for processing the data under GDPR, which{{+" "}}covers also our reuse.</p>
+            {%- elif nrefDataPersonalLegalBasisReuseReply == uuids.nrefDataPersonalLegalBasisConsentReuseNoAUuid -%}
+              <p>This data include personal data, legally based on{{+" "}}consent given by the research subject for processing the data under GDPR, which{{+" "}}does not cover our reuse; therefore, new consent will be needed.</p>
+            {%- else -%}
+              <p>This data include personal data, legally based on{{+" "}}consent given by the research subject for processing the data under GDPR.</p>
+            {%- endif -%}
+          {%- elif nrefDataPersonalLegalBasisReply == uuids.nrefDataPersonalLebalBasisOtherAUuid -%}
+            {%- set nrefDataPersonalLegalBasisOther = [nrefDataPersonalLegalBasis, uuids.nrefDataPersonalLebalBasisOtherAUuid, uuids.nrefDataPersonalLegalBasisOtherQUuid]|reply_path -%}
+            {%- set nrefDataPersonalLegalBasisOtherReply = repliesMap[nrefDataPersonalLegalBasisOther]|reply_str_value -%}
+            {%- if nrefDataPersonalLegalBasisOtherReply == uuids.nrefDataPersonalLegalBasisOtherLegalAUuid -%}
+              <p>This data include personal data, legally based on{{+" "}}a legal requirement (meaning a legal obligation to do this data processing).</p>
+            {%- elif nrefDataPersonalLegalBasisOtherReply == uuids.nrefDataPersonalLegalBasisOtherVitalAUuid -%}
+              <p>This data include personal data, legally based on{{+" "}}a vital interest (meaning it needs to be done to protect the vital interests of the data subject).</p>
+            {%- elif nrefDataPersonalLegalBasisOtherReply == uuids.nrefDataPersonalLegalBasisOtherLegitAUuid -%}
+              <p>This data include personal data, legally based on{{+" "}}a legitimate interest (meaning data subjects all expect us to do this data processing because of who we are).</p>
+            {%- elif nrefDataPersonalLegalBasisOtherReply == uuids.nrefDataPersonalLegalBasisOtherContractAUuid -%}
+              <p>This data include personal data, legally based on{{+" "}}a requirement to fulfill our contract with the data subjects.</p>
+            {%- else -%}
+              <p>This data include personal data.</p>
+            {%- endif -%}
+          {%- else -%}
+            <p>This data include personal data.</p>
+          {%- endif -%}
+"""
+
+    computer_readable_original = """
+    {%- if dataCompReadReply == uuids.dataCompReadYesAUuid -%}
+      <p>We will need to (re-)made the data into computer readable form before their using
+
+      {%- set dataCompReadItself = [dataCompRead, uuids.dataCompReadYesAUuid, uuids.dataCompReadItselfQUuid]|reply_path -%}
+      {%- set dataCompReadItselfReply = repliesMap[dataCompReadItself]|reply_str_value -%}
+      {%- set dataCompReadOthers = [dataCompRead, uuids.dataCompReadYesAUuid, uuids.dataCompReadOthersQUuid]|reply_path  -%}
+      {%- set dataCompReadOthersReply = repliesMap[dataCompReadOthers]|reply_str_value -%}
+
+      {%- if dataCompReadItselfReply -%}
+        {%- if dataCompReadItselfReply == uuids.dataCompReadItselfYesAUuid -%}
+          {{+" "}}and we will make this computer readable form available to others through a standard repository
+        {%- elif dataCompReadItselfReply == uuids.dataCompReadItselfYesOtherAUuid -%} 
+          {{+" "}}and we will make this computer readable form available to others
+        {%- elif dataCompReadItselfReply == uuids.dataCompReadItselfNoAUuid -%}
+          {{+" "}}but we won't make this computer readable form available to others
+        {%- endif -%}
+      {%- endif -%}
+      .
+
+      {%- if dataCompReadOthersReply -%}
+        {%- if dataCompReadOthersReply == uuids.dataCompReadOthersYesAUuid %}
+            We will provide machine readable, standardized metadata to others
+            {%- set dataCompReadWhichMetadataStandardPath = [dataCompReadOthers, uuids.dataCompReadOthersYesAUuid, uuids.dataCompReadOthersYesStandardsQUuid]|reply_path -%}
+            {%- set dataCompReadMetadataStandardItems =  repliesMap[dataCompReadWhichMetadataStandardPath]|reply_items -%}
+            {%- if dataCompReadMetadataStandardItems|length  > 0 -%}
+              {{+" "}}and we will use following Metadata Standards:{{+" "}}
+                {%- for dataCompReadMetadataStandardItem in dataCompReadMetadataStandardItems -%}
+                  {%- set dataCompReadMetadataStandardPrefix = [dataCompReadWhichMetadataStandardPath, dataCompReadMetadataStandardItem]|reply_path -%}
+                  {%- set dataCompReadMetadataStandard = [dataCompReadMetadataStandardPrefix, uuids.dataCompReadOthersYesStandardQUuid]|reply_path -%}
+                  {%- set dataCompReadMetadataStandardReply = repliesMap[dataCompReadMetadataStandard] -%}
+                  {{ macros.integrationFairSharing(dataCompReadMetadataStandardReply) }}{{ ", " if not loop.last else "." }}
+                {%- endfor -%}
+            {%- else -%}
+            .
+            {%- endif -%}
+
+        {%- endif -%}
+          
+      {%- endif -%}
+      </p>
+    {%- endif -%}
+"""
+    computer_readable_replacement = """
+    {%- if dataCompReadReply == uuids.dataCompReadYesAUuid -%}
+      <p>
+      {%- set dataCompReadItself = [dataCompRead, uuids.dataCompReadYesAUuid, uuids.dataCompReadItselfQUuid]|reply_path -%}
+      {%- set dataCompReadItselfReply = repliesMap[dataCompReadItself]|reply_str_value -%}
+      {%- set dataCompReadOthers = [dataCompRead, uuids.dataCompReadYesAUuid, uuids.dataCompReadOthersQUuid]|reply_path  -%}
+      {%- set dataCompReadOthersReply = repliesMap[dataCompReadOthers]|reply_str_value -%}
+
+      {%- if dataCompReadItselfReply == uuids.dataCompReadItselfYesAUuid -%}
+        We will need to (re-)made the data into computer readable form before their using{{+" "}}and we will make this computer readable form available to others through a standard repository.
+      {%- elif dataCompReadItselfReply == uuids.dataCompReadItselfYesOtherAUuid -%}
+        We will need to (re-)made the data into computer readable form before their using{{+" "}}and we will make this computer readable form available to others.
+      {%- elif dataCompReadItselfReply == uuids.dataCompReadItselfNoAUuid -%}
+        We will need to (re-)made the data into computer readable form before their using{{+" "}}but we won't make this computer readable form available to others.
+      {%- else -%}
+        We will need to (re-)made the data into computer readable form before their using.
+      {%- endif -%}
+
+      {%- if dataCompReadOthersReply == uuids.dataCompReadOthersYesAUuid %}
+        {%- set dataCompReadWhichMetadataStandardPath = [dataCompReadOthers, uuids.dataCompReadOthersYesAUuid, uuids.dataCompReadOthersYesStandardsQUuid]|reply_path -%}
+        {%- set dataCompReadMetadataStandardItems =  repliesMap[dataCompReadWhichMetadataStandardPath]|reply_items -%}
+        {%- if dataCompReadMetadataStandardItems|length  > 0 -%}
+          We will provide machine readable, standardized metadata to others{{+" "}}and we will use following Metadata Standards:{{+" "}}
+          {%- for dataCompReadMetadataStandardItem in dataCompReadMetadataStandardItems -%}
+            {%- set dataCompReadMetadataStandardPrefix = [dataCompReadWhichMetadataStandardPath, dataCompReadMetadataStandardItem]|reply_path -%}
+            {%- set dataCompReadMetadataStandard = [dataCompReadMetadataStandardPrefix, uuids.dataCompReadOthersYesStandardQUuid]|reply_path -%}
+            {%- set dataCompReadMetadataStandardReply = repliesMap[dataCompReadMetadataStandard] -%}
+            {{ macros.integrationFairSharing(dataCompReadMetadataStandardReply) }}{{ ", " if not loop.last else "." }}
+          {%- endfor -%}
+        {%- else -%}
+          We will provide machine readable, standardized metadata to others.
+        {%- endif -%}
+      {%- endif -%}
+      </p>
+    {%- endif -%}
+"""
+
+    ref_data_used_identification_original = """
+            <p>We will re-use this standard reference data
+            {%- if refDataWhere -%}
+              {{" "}}available via:{{" "}}
+              {%- if refDataWhere.startswith("http://") or refDataWhere.startswith("https://") or refDataWhere.startswith("ftp://") -%}
+                <a href="{{ refDataWhere }}" target="_blank">{{ refDataWhere }} </a>.
+              {%- else -%}
+                {{ refDataWhere }}
+             {%- endif -%}
+            {%- endif -%}
+    
+            {# usage #}
+            {%- set refDataUsageQ = [ refDataUsedPrefix, uuids.refDataUsageQUuid]|reply_path -%}
+            {%- set refDataUsageReply = repliesMap[refDataUsageQ]|reply_str_value  -%}
+            {%- if refDataUsageReply -%}
+                {{+" "}}in order to "{{ refDataUsageReply}}"
+            {%- endif -%}
+            .</p>
+"""
+    ref_data_used_identification_replacement = """
+            {# usage #}
+            {%- set refDataUsageQ = [ refDataUsedPrefix, uuids.refDataUsageQUuid]|reply_path -%}
+            {%- set refDataUsageReply = repliesMap[refDataUsageQ]|reply_str_value  -%}
+            {%- if refDataWhere -%}
+              {%- if refDataWhere.startswith("http://") or refDataWhere.startswith("https://") or refDataWhere.startswith("ftp://") -%}
+                {%- if refDataUsageReply -%}
+                  <p>We will re-use this standard reference data available via:{{" "}}<a href="{{ refDataWhere }}" target="_blank">{{ refDataWhere }} </a>{{+" "}}in order to "{{ refDataUsageReply}}".</p>
+                {%- else -%}
+                  <p>We will re-use this standard reference data available via:{{" "}}<a href="{{ refDataWhere }}" target="_blank">{{ refDataWhere }} </a>.</p>
+                {%- endif -%}
+              {%- else -%}
+                {%- if refDataUsageReply -%}
+                  <p>We will re-use this standard reference data available via:{{" "}}{{ refDataWhere }}{{+" "}}in order to "{{ refDataUsageReply}}".</p>
+                {%- else -%}
+                  <p>We will re-use this standard reference data available via:{{" "}}{{ refDataWhere }}.</p>
+                {%- endif -%}
+              {%- endif -%}
+            {%- elif refDataUsageReply -%}
+              <p>We will re-use this standard reference data in order to "{{ refDataUsageReply}}".</p>
+            {%- else -%}
+              <p>We will re-use this standard reference data.</p>
+            {%- endif -%}
+"""
+
+    nref_data_used_identification_original = """
+          <p>We will re-use this non-referece data 
+          {%- if nrefDataWhere -%}
+         {{" "}} available via:{{" "}}
+            {%- if nrefDataWhere.startswith("http://") or nrefDataWhere.startswith("https://") or nrefDataWhere.startswith("ftp://") -%}
+              <a href="{{ nrefDataWhere }}" target="_blank">{{ nrefDataWhere }} </a>.
+            {%- else -%}
+              {{ nrefDataWhere }}
+            {%- endif -%}
+          {%- endif -%}
+    
+          {# usage #}
+          {%- set nrefDataUsageQ = [nrefDataUsedPrefix, uuids.nrefDataUsageQUuid]|reply_path  -%}
+          {%- set nrefDataUsageReply = repliesMap[nrefDataUsageQ]|reply_str_value -%}
+          {%- if nrefDataUsageReply -%}
+            {{+" "}}in order to "{{ nrefDataUsageReply}}"
+          {%- endif -%}
+          .</p>
+"""
+    nref_data_used_identification_replacement = """
+          {# usage #}
+          {%- set nrefDataUsageQ = [nrefDataUsedPrefix, uuids.nrefDataUsageQUuid]|reply_path  -%}
+          {%- set nrefDataUsageReply = repliesMap[nrefDataUsageQ]|reply_str_value -%}
+          {%- if nrefDataWhere -%}
+            {%- if nrefDataWhere.startswith("http://") or nrefDataWhere.startswith("https://") or nrefDataWhere.startswith("ftp://") -%}
+              {%- if nrefDataUsageReply -%}
+                <p>We will re-use this non-referece data available via:{{" "}}<a href="{{ nrefDataWhere }}" target="_blank">{{ nrefDataWhere }} </a>{{+" "}}in order to "{{ nrefDataUsageReply}}".</p>
+              {%- else -%}
+                <p>We will re-use this non-referece data available via:{{" "}}<a href="{{ nrefDataWhere }}" target="_blank">{{ nrefDataWhere }} </a>.</p>
+              {%- endif -%}
+            {%- else -%}
+              {%- if nrefDataUsageReply -%}
+                <p>We will re-use this non-referece data available via:{{" "}}{{ nrefDataWhere }}{{+" "}}in order to "{{ nrefDataUsageReply}}".</p>
+              {%- else -%}
+                <p>We will re-use this non-referece data available via:{{" "}}{{ nrefDataWhere }}.</p>
+              {%- endif -%}
+            {%- endif -%}
+          {%- elif nrefDataUsageReply -%}
+            <p>We will re-use this non-referece data in order to "{{ nrefDataUsageReply}}".</p>
+          {%- else -%}
+            <p>We will re-use this non-referece data.</p>
+          {%- endif -%}
+"""
+
+    ref_data_not_used_identification_original = """
+            <p> We considered reusing this standard reference data
+            {%- if refDataWhere -%}
+            {{" "}}available via:{{" "}}
+              {%- if refDataWhere.startswith("http://") or refDataWhere.startswith("https://") or refDataWhere.startswith("ftp://") -%}
+                <a href="{{ refDataWhere }}" target="_blank">{{ refDataWhere }} </a>.
+              {%- else -%}
+                {{ refDataWhere}}
+              {%- endif -%}
+            {%- endif -%}
+
+            {# no usage reason #}
+            {%- if refDataUseNoReply -%}
+              , but decided not to re-use it
+              {%- if refDataUseNoReply == uuids.refDataUseNoDataAUuid -%}
+                {{" "}}because it misses data we need
+              {%- elif refDataUseNoReply == uuids.refDataUseNoAspectAUuid -%}
+                {{" "}}because it misses required aspects
+              {%- elif refDataUseNoReply == uuids.refDataUseNoQualityAUuid -%}
+                {{" "}}because it is not sufficient quality
+              {%- elif refDataUseNoReply == uuids.refDataUseNoCondAUuid -%}
+                {{" "}}because its conditions of use do not allow us to use it
+              {%- elif refDataUseNoReply == uuids.refDataUseNoReasonAUuid and refDataUseNoOtherReasonReply -%}
+                {{" "}}because: "{{refDataUseNoOtherReasonReply}}"
+              {%- endif -%}
+              .
+            {%- else -%}
+            . </p>
+            {%- endif -%}
+"""
+    ref_data_not_used_identification_replacement = """
+            {%- if refDataWhere and (refDataWhere.startswith("http://") or refDataWhere.startswith("https://") or refDataWhere.startswith("ftp://")) -%}
+              <p> We considered reusing this standard reference data available via:{{" "}}<a href="{{ refDataWhere }}" target="_blank">{{ refDataWhere }} </a>
+            {%- elif refDataWhere -%}
+              <p> We considered reusing this standard reference data available via:{{" "}}{{ refDataWhere}}
+            {%- else -%}
+              <p> We considered reusing this standard reference data
+            {%- endif -%}
+
+            {# no usage reason #}
+            {%- if refDataUseNoReply == uuids.refDataUseNoDataAUuid -%}
+              , but decided not to re-use it{{" "}}because it misses data we need.
+            {%- elif refDataUseNoReply == uuids.refDataUseNoAspectAUuid -%}
+              , but decided not to re-use it{{" "}}because it misses required aspects.
+            {%- elif refDataUseNoReply == uuids.refDataUseNoQualityAUuid -%}
+              , but decided not to re-use it{{" "}}because it is not sufficient quality.
+            {%- elif refDataUseNoReply == uuids.refDataUseNoCondAUuid -%}
+              , but decided not to re-use it{{" "}}because its conditions of use do not allow us to use it.
+            {%- elif refDataUseNoReply == uuids.refDataUseNoReasonAUuid and refDataUseNoOtherReasonReply -%}
+              , but decided not to re-use it{{" "}}because: "{{refDataUseNoOtherReasonReply}}".
+            {%- elif refDataUseNoReply -%}
+              , but decided not to re-use it.
+            {%- else -%}
+              .
+            {%- endif -%}
+            </p>
+"""
+
+    nref_data_not_used_identification_original = """
+          <p>We considered reusing this non-reference data 
+          {%- if nrefDataWhere -%}
+          {{+" "}}available via:{{" "}}
+            {%- if nrefDataWhere.startswith("http://") or nrefDataWhere.startswith("https://") or nrefDataWhere.startswith("ftp://") -%}
+              <a href="{{ rnefDataWhere }}" target="_blank">{{ nrefDataWhere }} </a>.
+            {%- else -%}
+              {{ nrefDataWhere }}
+            {%- endif -%}
+          {%- endif -%}
+
+          {# no usage reason #}
+          {%- if nrefDataUseNoReply -%}
+            , but decided not to reuse it
+            {%- if nrefDataUseNoReply == uuids.nrefDataUseNoDataAUuid -%}
+              {{" "}}because it misses data we need
+            {%- elif nrefDataUseNoReply == uuids.nrefDataUseNoAspectAUuid -%}
+              {{" "}}becauseit misses required aspects
+            {%- elif nrefDataUseNoReply == uuids.nrefDataUseNoQualityAUuid -%}
+              {{" "}}becauseit is not sufficient quality
+            {%- elif nrefDataUseNoReply == uuids.nrefDataUseNoCondAUuid -%}
+              {{" "}}because its conditions of use do not allow us to use it
+            {%- elif nrefDataUseNoReply == uuids.nrefDataUseNoReasonAUuid and nrefDataUseNoOtherReasonReply -%}
+              {{" "}}because: "{{nrefDataUseNoOtherReasonReply}}"
+            {%- endif -%}
+            .
+          {%- else -%}
+          .</p>
+          {%- endif -%}
+"""
+    nref_data_not_used_identification_replacement = """
+          {%- if nrefDataWhere and (nrefDataWhere.startswith("http://") or nrefDataWhere.startswith("https://") or nrefDataWhere.startswith("ftp://")) -%}
+            <p>We considered reusing this non-reference data available via:{{" "}}<a href="{{ rnefDataWhere }}" target="_blank">{{ nrefDataWhere }} </a>
+          {%- elif nrefDataWhere -%}
+            <p>We considered reusing this non-reference data available via:{{" "}}{{ nrefDataWhere }}
+          {%- else -%}
+            <p>We considered reusing this non-reference data
+          {%- endif -%}
+
+          {# no usage reason #}
+          {%- if nrefDataUseNoReply == uuids.nrefDataUseNoDataAUuid -%}
+            , but decided not to reuse it{{" "}}because it misses data we need.
+          {%- elif nrefDataUseNoReply == uuids.nrefDataUseNoAspectAUuid -%}
+            , but decided not to reuse it{{" "}}becauseit misses required aspects.
+          {%- elif nrefDataUseNoReply == uuids.nrefDataUseNoQualityAUuid -%}
+            , but decided not to reuse it{{" "}}becauseit is not sufficient quality.
+          {%- elif nrefDataUseNoReply == uuids.nrefDataUseNoCondAUuid -%}
+            , but decided not to reuse it{{" "}}because its conditions of use do not allow us to use it.
+          {%- elif nrefDataUseNoReply == uuids.nrefDataUseNoReasonAUuid and nrefDataUseNoOtherReasonReply -%}
+            , but decided not to reuse it{{" "}}because: "{{nrefDataUseNoOtherReasonReply}}".
+          {%- elif nrefDataUseNoReply -%}
+            , but decided not to reuse it.
+          {%- else -%}
+            .
+          {%- endif -%}
+          </p>
+"""
+
+    return _apply_reversible_replacements(
+        source_text,
+        (
+            (ref_data_conditions_original, ref_data_conditions_replacement),
+            (nref_data_conditions_original, nref_data_conditions_replacement),
+            (nref_personal_legal_basis_original, nref_personal_legal_basis_replacement),
+            (computer_readable_original, computer_readable_replacement),
+            (ref_data_used_identification_original, ref_data_used_identification_replacement),
+            (nref_data_used_identification_original, nref_data_used_identification_replacement),
+            (
+                ref_data_not_used_identification_original,
+                ref_data_not_used_identification_replacement,
+            ),
+            (
+                nref_data_not_used_identification_original,
+                nref_data_not_used_identification_replacement,
+            ),
+        ),
+    )
 
 
 def _rewrite_known_science_europe_fragments(source_text: str) -> str:
@@ -556,7 +1031,138 @@ def _rewrite_known_science_europe_fragments(source_text: str) -> str:
         '{{" "}} available via:{{" "}}<a href="{{ nrefDataWhere }}" target="_blank">'
         "{{ nrefDataWhere }} </a>."
     )
+
+    personal_data_legal_basis_original = """
+                    <p> We are collecting and processing personal data{{+" "}}
+                    {%- if personalDataLegalBasisReply == uuids.cpersGdprLegalBasisPublicAUuid -%}
+                        based on public interest.</p>
+                    {%- elif personalDataLegalBasisReply == uuids.cpersGdprLegalBasisAskAUuid -%}
+                        based on subject's consent.</p>
+                    {%- elif personalDataLegalBasisReply == uuids.cpersGdprLegalBasisOtherAUuid -%}
+                        {%- set personalDataLegalBasisOtherQUuid = [personalDataLegalBasisQUuid, uuids.cpersGdprLegalBasisOtherAUuid, uuids. cpersGdprLegalBasisOtherWhichQUuid ]|reply_path -%}
+                        {%- set personalDataLegalBasisOtherReply = repliesMap[personalDataLegalBasisOtherQUuid]|reply_str_value  -%}
+                        {%- if personalDataLegalBasisOtherReply == uuids.cpersGdprLegalBasisOtherWhichContractAUui -%}
+                            in order to fulfil contract.</p>
+                        {%- elif personalDataLegalBasisOtherReply == uuids.cpersGdprLegalBasisOtherWhichLegitAUuid -%}
+                            based on legitimate interest.</p>
+                        {%- elif personalDataLegalBasisOtherReply == uuids.cpersGdprLegalBasisOtherWhichVitalAUuid -%}
+                            based on vital interest.</p>
+                        {%- elif personalDataLegalBasisOtherReply == uuids.cpersGdprLegalBasisOtherWhichLegalAUuid -%}
+                            based on legal requirement.</p>
+                        {%- endif -%}
+                    {%- endif -%}
+"""
+    personal_data_legal_basis_replacement = """
+                    {%- if personalDataLegalBasisReply == uuids.cpersGdprLegalBasisPublicAUuid -%}
+                        <p> We are collecting and processing personal data{{+" "}}based on public interest.</p>
+                    {%- elif personalDataLegalBasisReply == uuids.cpersGdprLegalBasisAskAUuid -%}
+                        <p> We are collecting and processing personal data{{+" "}}based on subject's consent.</p>
+                    {%- elif personalDataLegalBasisReply == uuids.cpersGdprLegalBasisOtherAUuid -%}
+                        {%- set personalDataLegalBasisOtherQUuid = [personalDataLegalBasisQUuid, uuids.cpersGdprLegalBasisOtherAUuid, uuids. cpersGdprLegalBasisOtherWhichQUuid ]|reply_path -%}
+                        {%- set personalDataLegalBasisOtherReply = repliesMap[personalDataLegalBasisOtherQUuid]|reply_str_value  -%}
+                        {%- if personalDataLegalBasisOtherReply == uuids.cpersGdprLegalBasisOtherWhichContractAUui -%}
+                            <p> We are collecting and processing personal data{{+" "}}in order to fulfil contract.</p>
+                        {%- elif personalDataLegalBasisOtherReply == uuids.cpersGdprLegalBasisOtherWhichLegitAUuid -%}
+                            <p> We are collecting and processing personal data{{+" "}}based on legitimate interest.</p>
+                        {%- elif personalDataLegalBasisOtherReply == uuids.cpersGdprLegalBasisOtherWhichVitalAUuid -%}
+                            <p> We are collecting and processing personal data{{+" "}}based on vital interest.</p>
+                        {%- elif personalDataLegalBasisOtherReply == uuids.cpersGdprLegalBasisOtherWhichLegalAUuid -%}
+                            <p> We are collecting and processing personal data{{+" "}}based on legal requirement.</p>
+                        {%- endif -%}
+                    {%- endif -%}
+"""
+
+    copyright_open_reasons_original = """
+      {%- if nReasons > 0 -%}
+        <p>
+        The data cannot become completely open because 
+        {%- if nReasons == 1 -%}
+          {%- if legalReasons %}
+            of legal reasons.
+          {%- elif businessReasonsPatents %}
+            of patent-related business reasons.
+          {%- elif businessReasonsOther %}
+            of non-patent business reasons{{  ": " ~ notOpenBusinessReasonsOther|dot if notOpenBusinessReasonsOther else "." }}
+          {%- elif otherReasonsPapers %}
+            we want to publish a paper first.
+          {%- elif otherReasonsOther %}
+            we have other than paper-publishing reasons{{ ": " ~ notOpenOtherReasonsOther|dot if notOpenOtherReasonsOther else "." }}
+          {%- endif -%}
+        {%- else %}
+          of:
+          <ul>
+            {%- if legalReasons %}
+              <li>legal reasons</li>
+            {%- endif -%}
+            {%- if businessReasonsPatents %}
+              <li>patent-related business reasons</li>
+            {%- elif businessReasonsOther %}
+              <li>non-patent business reasons{{ ": " ~ notOpenBusinessReasonsOther if notOpenBusinessReasonsOther else "" }}</li>
+            {%- endif -%}
+            {%- if otherReasonsPapers %}
+              <li>we want to publish a paper first</li>
+            {%- elif otherReasonsOther -%}
+              <li>we have other than paper-publishing reasons{{ ": " ~ notOpenOtherReasonsOther if notOpenOtherReasonsOther else "" }}</li>
+            {%- endif -%}
+          </ul>
+        {%- endif -%}
+"""
+    copyright_open_reasons_replacement = """
+      {%- if nReasons > 0 -%}
+        {%- if nReasons == 1 -%}
+          {%- if legalReasons %}
+            <p>The data cannot become completely open because of legal reasons.</p>
+          {%- elif businessReasonsPatents %}
+            <p>The data cannot become completely open because of patent-related business reasons.</p>
+          {%- elif businessReasonsOther %}
+            <p>The data cannot become completely open because of non-patent business reasons{{  ": " ~ notOpenBusinessReasonsOther|dot if notOpenBusinessReasonsOther else "." }}</p>
+          {%- elif otherReasonsPapers %}
+            <p>The data cannot become completely open because we want to publish a paper first.</p>
+          {%- elif otherReasonsOther %}
+            <p>The data cannot become completely open because we have other than paper-publishing reasons{{ ": " ~ notOpenOtherReasonsOther|dot if notOpenOtherReasonsOther else "." }}</p>
+          {%- endif -%}
+        {%- else %}
+          <p>The data cannot become completely open because of:</p>
+          <ul>
+            {%- if legalReasons %}
+              <li>legal reasons</li>
+            {%- endif -%}
+            {%- if businessReasonsPatents %}
+              <li>patent-related business reasons</li>
+            {%- elif businessReasonsOther %}
+              <li>non-patent business reasons{{ ": " ~ notOpenBusinessReasonsOther if notOpenBusinessReasonsOther else "" }}</li>
+            {%- endif -%}
+            {%- if otherReasonsPapers %}
+              <li>we want to publish a paper first</li>
+            {%- elif otherReasonsOther -%}
+              <li>we have other than paper-publishing reasons{{ ": " ~ notOpenOtherReasonsOther if notOpenOtherReasonsOther else "" }}</li>
+            {%- endif -%}
+          </ul>
+        {%- endif -%}
+"""
+
+    measured_reuse_other_field_original = """
+                <p>Researchers working in other fields will be interested in re-using this data
+                
+                {%- if measuredDataReuseOtherFieldHowReply -%}
+                
+                 {{" "}}because: {{measuredDataReuseOtherFieldHowReply|dot}}</p>
+                {%- else -%}
+                .
+                {%- endif -%}
+"""
+    measured_reuse_other_field_replacement = """
+                {%- if measuredDataReuseOtherFieldHowReply -%}
+                <p>Researchers working in other fields will be interested in re-using this data{{" "}}because: {{measuredDataReuseOtherFieldHowReply|dot}}</p>
+                {%- else -%}
+                <p>Researchers working in other fields will be interested in re-using this data.</p>
+                {%- endif -%}
+"""
+
     replacements = (
+        (personal_data_legal_basis_original, personal_data_legal_basis_replacement),
+        (copyright_open_reasons_original, copyright_open_reasons_replacement),
+        (measured_reuse_other_field_original, measured_reuse_other_field_replacement),
         (
             f"""
          {{{{" "}}}} available via:{{{{" "}}}}
@@ -917,6 +1523,7 @@ def _rewrite_inner_common_prefix_branch(
             opening_tag=opening_tag,
             closing_tag=closing_tag,
             group=groups[0],
+            active_conditions=active_conditions,
         )
         if rewritten_group is not None:
             return rewritten_group
@@ -928,6 +1535,7 @@ def _rewrite_inner_common_prefix_branch(
             opening_tag=opening_tag,
             closing_tag=closing_tag,
             group=optional_groups[0],
+            active_conditions=active_conditions,
         )
         if rewritten_group is not None:
             return rewritten_group
@@ -1053,6 +1661,7 @@ def _rewrite_single_alternative_branch_group(
     opening_tag: str,
     closing_tag: str,
     group: BranchRewriteGroup,
+    active_conditions: list[str],
 ) -> str | None:
     """Rewrite one if/elif/else group into complete branch sentences."""
 
@@ -1097,7 +1706,13 @@ def _rewrite_single_alternative_branch_group(
         rewritten_parts.append(branch_body)
         rewritten_parts.append(suffix_after_group)
         rewritten_parts.append(closing_tag)
-    if not any(_jinja_block_keyword(branch.opener_text) == "else" for branch in group.branches):
+    has_explicit_else = any(
+        _jinja_block_keyword(branch.opener_text) == "else" for branch in group.branches
+    )
+    if not has_explicit_else and not _active_truthy_selector_covers_group(
+        group=group,
+        active_conditions=active_conditions,
+    ):
         fallback_opener = group.branches[0].opener_text
         fallback_prefix = _branch_prefix_for_rewrite(
             visible_prefix=visible_prefix,
@@ -1111,6 +1726,63 @@ def _rewrite_single_alternative_branch_group(
         rewritten_parts.append(closing_tag)
     rewritten_parts.append(group.end_text)
     return "".join(rewritten_parts)
+
+
+def _active_truthy_selector_covers_group(
+    *,
+    group: BranchRewriteGroup,
+    active_conditions: list[str],
+) -> bool:
+    """Avoid exposing unreachable enum fallbacks as translator-facing fragments.
+
+    DSW answer branches often look like:
+
+    `{% if answer %}<p>Prefix {% if answer == option_a %}...{% endif %}</p>{% endif %}`.
+
+    The generic rewriter normally adds an `else` fallback to preserve arbitrary
+    unknown selector values. For enumerated DSW answers, that fallback renders
+    only the prefix (`We will use.`), which is not useful to translate.  If an
+    outer condition already checks the same selector for truthiness, we treat the
+    inner equality branches as the intended closed option set.
+    """
+
+    selector_name = _branch_group_equality_selector_name(group)
+    if selector_name is None:
+        return False
+    return selector_name in {
+        _normalize_truthy_condition(condition) for condition in active_conditions
+    }
+
+
+def _branch_group_equality_selector_name(group: BranchRewriteGroup) -> str | None:
+    selector_names: set[str] = set()
+    for branch in group.branches:
+        keyword = _jinja_block_keyword(branch.opener_text)
+        if keyword == "else":
+            return None
+        if keyword not in {"if", "elif"}:
+            continue
+        condition = _jinja_block_inner(branch.opener_text).split(None, 1)
+        if len(condition) != 2:
+            return None
+        match = re.match(
+            r"(?P<selector>[A-Za-z_][A-Za-z0-9_.]*)\s*==\s*.+\Z",
+            condition[1],
+            flags=re.DOTALL,
+        )
+        if match is None:
+            return None
+        selector_names.add(match.group("selector"))
+    if len(selector_names) != 1:
+        return None
+    return next(iter(selector_names))
+
+
+def _normalize_truthy_condition(condition: str) -> str:
+    normalized = condition.strip()
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*", normalized):
+        return normalized
+    return ""
 
 
 def _rewrite_single_choice_optional_branch_groups(

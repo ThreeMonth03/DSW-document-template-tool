@@ -37,6 +37,12 @@ def _write_compact_template(tmp_path: Path, source_text: str) -> Path:
     return compact_dir
 
 
+def _write_compact_template_raw(tmp_path: Path, source_text: str) -> Path:
+    compact_dir = _write_compact_template(tmp_path, "")
+    (compact_dir / "src" / "index.html.j2").write_text(source_text, encoding="utf-8")
+    return compact_dir
+
+
 def _read_translation_docs(tree_dir: Path) -> list[str]:
     return [path.read_text(encoding="utf-8") for path in sorted(tree_dir.rglob("translation.md"))]
 
@@ -523,7 +529,7 @@ def test_export_translation_tree_keeps_nested_optional_link_with_label(
 def test_export_translation_tree_keeps_nested_restriction_with_label(
     tmp_path: Path,
 ) -> None:
-    """Nested restriction branches should not expose `available with` alone."""
+    """Audit should reject nested restriction branches if the prefix still splits off."""
 
     compact_dir = _write_compact_template(
         tmp_path,
@@ -552,7 +558,12 @@ def test_export_translation_tree_keeps_nested_restriction_with_label(
     assert "available with" not in sentences
     assert any("available with following restrictions" in sentence for sentence in sentences)
     assert any("available with restrictions" in sentence for sentence in sentences)
-    assert audit_translation_tree(tree_dir=tree_dir, source_dir=expanded_dir) == []
+    issues = audit_translation_tree(tree_dir=tree_dir, source_dir=expanded_dir)
+
+    assert [issue.code for issue in issues] == [
+        "hard-to-translate-source-fragment",
+        "hard-to-translate-source-fragment",
+    ]
 
 
 def test_export_translation_tree_keeps_reason_prefix_with_branch_reason(
@@ -592,6 +603,147 @@ def test_export_translation_tree_keeps_reason_prefix_with_branch_reason(
     )
     assert any(
         "but decided not to reuse it because it is not sufficient quality" in sentence
+        for sentence in sentences
+    )
+    assert audit_translation_tree(tree_dir=tree_dir, source_dir=expanded_dir) == []
+
+
+def test_export_translation_tree_keeps_inline_reason_suffix_with_prefix(
+    tmp_path: Path,
+) -> None:
+    """The Science Europe measured-data reason should stay attached to its prefix."""
+
+    compact_dir = _write_compact_template_raw(
+        tmp_path,
+        """
+                <p>Researchers working in other fields will be interested in re-using this data
+                
+                {%- if measuredDataReuseOtherFieldHowReply -%}
+                
+                 {{" "}}because: {{measuredDataReuseOtherFieldHowReply|dot}}</p>
+                {%- else -%}
+                .
+                {%- endif -%}
+""",
+    )
+
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    sentences = _extract_sentence_list(_read_translation_docs(tree_dir))
+    assert "because: {measuredDataReuseOtherFieldHowReply}" not in sentences
+    assert any(
+        "Researchers working in other fields will be interested in re-using this data because:"
+        in sentence
+        for sentence in sentences
+    )
+    assert audit_translation_tree(tree_dir=tree_dir, source_dir=expanded_dir) == []
+
+
+def test_export_translation_tree_keeps_legal_basis_prefix_with_other_branch(
+    tmp_path: Path,
+) -> None:
+    """The Science Europe GDPR legal-basis branches should include their prefix."""
+
+    compact_dir = _write_compact_template_raw(
+        tmp_path,
+        """
+                    <p> We are collecting and processing personal data{{+" "}}
+                    {%- if personalDataLegalBasisReply == uuids.cpersGdprLegalBasisPublicAUuid -%}
+                        based on public interest.</p>
+                    {%- elif personalDataLegalBasisReply == uuids.cpersGdprLegalBasisAskAUuid -%}
+                        based on subject's consent.</p>
+                    {%- elif personalDataLegalBasisReply == uuids.cpersGdprLegalBasisOtherAUuid -%}
+                        {%- set personalDataLegalBasisOtherQUuid = [personalDataLegalBasisQUuid, uuids.cpersGdprLegalBasisOtherAUuid, uuids. cpersGdprLegalBasisOtherWhichQUuid ]|reply_path -%}
+                        {%- set personalDataLegalBasisOtherReply = repliesMap[personalDataLegalBasisOtherQUuid]|reply_str_value  -%}
+                        {%- if personalDataLegalBasisOtherReply == uuids.cpersGdprLegalBasisOtherWhichContractAUui -%}
+                            in order to fulfil contract.</p>
+                        {%- elif personalDataLegalBasisOtherReply == uuids.cpersGdprLegalBasisOtherWhichLegitAUuid -%}
+                            based on legitimate interest.</p>
+                        {%- elif personalDataLegalBasisOtherReply == uuids.cpersGdprLegalBasisOtherWhichVitalAUuid -%}
+                            based on vital interest.</p>
+                        {%- elif personalDataLegalBasisOtherReply == uuids.cpersGdprLegalBasisOtherWhichLegalAUuid -%}
+                            based on legal requirement.</p>
+                        {%- endif -%}
+                    {%- endif -%}
+""",
+    )
+
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    sentences = _extract_sentence_list(_read_translation_docs(tree_dir))
+    assert "in order to fulfil contract." not in sentences
+    assert any(
+        "We are collecting and processing personal data in order to fulfil contract." in sentence
+        for sentence in sentences
+    )
+    assert audit_translation_tree(tree_dir=tree_dir, source_dir=expanded_dir) == []
+
+
+def test_export_translation_tree_keeps_open_reason_prefix_with_single_reasons(
+    tmp_path: Path,
+) -> None:
+    """The Science Europe not-open reason branches should be complete sentences."""
+
+    compact_dir = _write_compact_template_raw(
+        tmp_path,
+        """
+      {%- if nReasons > 0 -%}
+        <p>
+        The data cannot become completely open because 
+        {%- if nReasons == 1 -%}
+          {%- if legalReasons %}
+            of legal reasons.
+          {%- elif businessReasonsPatents %}
+            of patent-related business reasons.
+          {%- elif businessReasonsOther %}
+            of non-patent business reasons{{  ": " ~ notOpenBusinessReasonsOther|dot if notOpenBusinessReasonsOther else "." }}
+          {%- elif otherReasonsPapers %}
+            we want to publish a paper first.
+          {%- elif otherReasonsOther %}
+            we have other than paper-publishing reasons{{ ": " ~ notOpenOtherReasonsOther|dot if notOpenOtherReasonsOther else "." }}
+          {%- endif -%}
+        {%- else %}
+          of:
+          <ul>
+            {%- if legalReasons %}
+              <li>legal reasons</li>
+            {%- endif -%}
+            {%- if businessReasonsPatents %}
+              <li>patent-related business reasons</li>
+            {%- elif businessReasonsOther %}
+              <li>non-patent business reasons{{ ": " ~ notOpenBusinessReasonsOther if notOpenBusinessReasonsOther else "" }}</li>
+            {%- endif -%}
+            {%- if otherReasonsPapers %}
+              <li>we want to publish a paper first</li>
+            {%- elif otherReasonsOther -%}
+              <li>we have other than paper-publishing reasons{{ ": " ~ notOpenOtherReasonsOther if notOpenOtherReasonsOther else "" }}</li>
+            {%- endif -%}
+          </ul>
+        {%- endif -%}
+""",
+    )
+
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    sentences = _extract_sentence_list(_read_translation_docs(tree_dir))
+    assert "The data cannot become completely open because" not in sentences
+    assert "of legal reasons." not in sentences
+    assert any(
+        "The data cannot become completely open because of legal reasons." in sentence
+        for sentence in sentences
+    )
+    assert any(
+        "The data cannot become completely open because of patent-related business reasons."
+        in sentence
         for sentence in sentences
     )
     assert audit_translation_tree(tree_dir=tree_dir, source_dir=expanded_dir) == []
@@ -1117,3 +1269,24 @@ def test_audit_translation_tree_reports_raw_jinja_translation(tmp_path: Path) ->
 
     assert [issue.code for issue in issues] == ["raw-jinja-in-translation"]
     assert "translation.md" in issues[0].location
+
+
+def test_audit_translation_tree_reports_hard_sentence_fragments(tmp_path: Path) -> None:
+    """CI should reject branch leftovers that are too broken for translators."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+<p>and we will make this computer readable form available to others.</p>
+""",
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    issues = audit_translation_tree(tree_dir=tree_dir, source_dir=expanded_dir)
+
+    assert [issue.code for issue in issues] == ["hard-to-translate-source-fragment"]
+    assert "and we will make this computer readable form" in issues[0].message
