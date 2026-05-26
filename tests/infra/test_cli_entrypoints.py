@@ -65,6 +65,15 @@ def test_translation_tree_help(repo_root) -> None:
     assert "export" in result.stdout
     assert "sync" in result.stdout
 
+    result = subprocess.run(
+        [sys.executable, str(repo_root / "src" / "translation_tree.py"), "sync", "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    assert "--template-id" in result.stdout
+
 
 def test_checked_in_compact_and_expanded_templates_verify(repo_root: Path) -> None:
     """Both checked-in template forms should be accepted by dsw-tdk."""

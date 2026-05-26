@@ -93,6 +93,10 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
     assert workflow["env"]["TRANSLATED_TEMPLATE_DIR"].startswith(
         "outputs/document-templates/translated-expanded/"
     )
+    assert workflow["env"]["TRANSLATED_TEMPLATE_ORGANIZATION_ID"] == "dsw"
+    assert workflow["env"]["TRANSLATED_TEMPLATE_ID"] == "science-europe-zh-hant"
+    assert workflow["env"]["TRANSLATED_TEMPLATE_VERSION"] == "1.30.0"
+    assert "science-europe-zh-hant-1.30.0.zip" in workflow["env"]["TRANSLATED_TEMPLATE_PACKAGE"]
     assert workflow["env"]["PROJECT_REF"] == "workspace/projects/test-project.json"
     assert workflow["env"]["PROJECT_RENDER_OUTPUT"].startswith("outputs/project-render/")
     assert "tooling-repo" in workflow_text
@@ -105,6 +109,10 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
     assert 'git add "$EXPANDED_TEMPLATE_DIR" "$TRANSLATION_TREE_DIR"' in workflow_text
     assert 'git push origin "HEAD:$TARGET_REF"' in workflow_text
     assert 'src/translation_tree.py" sync' in workflow_text
+    assert "--template-organization-id" in workflow_text
+    assert "--template-id" in workflow_text
+    assert "--template-name" in workflow_text
+    assert "--template-version" in workflow_text
     assert "Translation sync failed" in workflow_text
     assert "GITHUB_STEP_SUMMARY" in workflow_text
     assert "::error title=Translation sync failed::" in workflow_text

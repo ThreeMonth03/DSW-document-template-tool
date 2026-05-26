@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -789,6 +790,39 @@ def test_export_translation_tree_preserves_existing_translation_text(tmp_path: P
     assert "<p>你好，世界。</p>" in preserved_doc
     assert "- [x] [file] src/index.html.j2 (1/1)" in outline
     assert "- [x] [unit]" in outline
+
+
+def test_sync_translation_tree_can_patch_output_template_metadata(tmp_path: Path) -> None:
+    """Translated output bundles need distinct coordinates from upstream templates."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+<p>Hello world.</p>
+""",
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+    translated_expanded_dir = tmp_path / "translated-expanded"
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    sync_translation_tree(
+        tree_dir=tree_dir,
+        source_dir=expanded_dir,
+        output_dir=translated_expanded_dir,
+        template_organization_id="dsw",
+        template_id="sample-zh-hant",
+        template_name="Sample Template (zh-Hant)",
+        template_version="1.0.0-zh-hant",
+    )
+
+    payload = json.loads((translated_expanded_dir / "template.json").read_text(encoding="utf-8"))
+    assert payload["organizationId"] == "dsw"
+    assert payload["templateId"] == "sample-zh-hant"
+    assert payload["name"] == "Sample Template (zh-Hant)"
+    assert payload["version"] == "1.0.0-zh-hant"
 
 
 def test_export_translation_tree_recovers_deleted_and_malformed_documents(

@@ -10,12 +10,17 @@ CI_CONFIG ?= config/regression.ci.yml
 TEMPLATE_DIR ?=
 PACKAGE_OUT ?= template.zip
 WORKSPACE_TEMPLATE_NAME ?= dsw-science-europe-1.30.0
+TRANSLATED_TEMPLATE_ORGANIZATION_ID ?= dsw
+TRANSLATED_TEMPLATE_ID ?= science-europe-zh-hant
+TRANSLATED_TEMPLATE_VERSION ?= 1.30.0
+TRANSLATED_TEMPLATE_NAME ?= Science Europe DMP Template (zh-Hant)
+TRANSLATED_WORKSPACE_TEMPLATE_NAME ?= $(TRANSLATED_TEMPLATE_ORGANIZATION_ID)-$(TRANSLATED_TEMPLATE_ID)-$(TRANSLATED_TEMPLATE_VERSION)
 COMPACT_TEMPLATE_DIR ?= workspace/document-templates/compact/$(WORKSPACE_TEMPLATE_NAME)
 EXPANDED_TEMPLATE_DIR ?= workspace/document-templates/expanded/$(WORKSPACE_TEMPLATE_NAME)
 TRANSLATION_TREE_DIR ?= workspace/document-templates/translation/$(WORKSPACE_TEMPLATE_NAME)
 REBUILT_TEMPLATE_DIR ?= outputs/document-templates/rebuilt/$(WORKSPACE_TEMPLATE_NAME)
-TRANSLATED_EXPANDED_TEMPLATE_DIR ?= outputs/document-templates/translated-expanded/$(WORKSPACE_TEMPLATE_NAME)
-TRANSLATED_TEMPLATE_PACKAGE ?= outputs/document-templates/translated-expanded/$(WORKSPACE_TEMPLATE_NAME).zip
+TRANSLATED_EXPANDED_TEMPLATE_DIR ?= outputs/document-templates/translated-expanded/$(TRANSLATED_WORKSPACE_TEMPLATE_NAME)
+TRANSLATED_TEMPLATE_PACKAGE ?= outputs/document-templates/translated-expanded/$(TRANSLATED_WORKSPACE_TEMPLATE_NAME).zip
 PROJECT_REF ?= workspace/projects/test-project.json
 PROJECT_UUID ?= $(DSW_PROJECT_UUID)
 PROJECT_RENDER_TEMPLATE_DIR ?= $(TRANSLATED_EXPANDED_TEMPLATE_DIR)
@@ -103,7 +108,14 @@ export-translation-tree: transform venv
 	$(PYTHON) src/translation_tree.py export --source $(EXPANDED_TEMPLATE_DIR) --output $(TRANSLATION_TREE_DIR)
 
 sync-translation-tree: venv
-	$(PYTHON) src/translation_tree.py sync --tree $(TRANSLATION_TREE_DIR) --source $(EXPANDED_TEMPLATE_DIR) --output $(TRANSLATED_EXPANDED_TEMPLATE_DIR)
+	$(PYTHON) src/translation_tree.py sync \
+		--tree "$(TRANSLATION_TREE_DIR)" \
+		--source "$(EXPANDED_TEMPLATE_DIR)" \
+		--output "$(TRANSLATED_EXPANDED_TEMPLATE_DIR)" \
+		--template-organization-id "$(TRANSLATED_TEMPLATE_ORGANIZATION_ID)" \
+		--template-id "$(TRANSLATED_TEMPLATE_ID)" \
+		--template-name "$(TRANSLATED_TEMPLATE_NAME)" \
+		--template-version "$(TRANSLATED_TEMPLATE_VERSION)"
 	$(DSW_TDK) package $(TRANSLATED_EXPANDED_TEMPLATE_DIR) --output $(TRANSLATED_TEMPLATE_PACKAGE) --force
 
 compact-template: venv

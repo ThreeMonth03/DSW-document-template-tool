@@ -262,6 +262,10 @@ def sync_translation_tree(
     output_dir: Path,
     source_lang: str = DEFAULT_SOURCE_LANG,
     target_lang: str = DEFAULT_TARGET_LANG,
+    template_organization_id: str | None = None,
+    template_id: str | None = None,
+    template_name: str | None = None,
+    template_version: str | None = None,
 ) -> Path:
     """Apply translator-edited unit files back to one expanded workspace copy."""
 
@@ -367,8 +371,43 @@ def sync_translation_tree(
     shutil.copytree(source_dir, output_dir, dirs_exist_ok=True)
     for source_file, translated_text in translated_files.items():
         (output_dir / source_file).write_text(translated_text, encoding="utf-8")
+    _patch_template_metadata(
+        output_dir=output_dir,
+        organization_id=template_organization_id,
+        template_id=template_id,
+        name=template_name,
+        version=template_version,
+    )
 
     return output_dir
+
+
+def _patch_template_metadata(
+    *,
+    output_dir: Path,
+    organization_id: str | None,
+    template_id: str | None,
+    name: str | None,
+    version: str | None,
+) -> None:
+    updates = {
+        "organizationId": organization_id,
+        "templateId": template_id,
+        "name": name,
+        "version": version,
+    }
+    updates = {key: value for key, value in updates.items() if value is not None}
+    if not updates:
+        return
+
+    template_path = output_dir / "template.json"
+    payload = json.loads(template_path.read_text(encoding="utf-8"))
+    for key, value in updates.items():
+        payload[key] = value
+    template_path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _extract_units(*, relative_path: str, source_text: str) -> list[TranslationUnit]:

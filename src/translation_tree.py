@@ -33,6 +33,22 @@ def build_argument_parser() -> argparse.ArgumentParser:
     sync_parser.add_argument("--tree", required=True, help="Translation tree directory.")
     sync_parser.add_argument("--source", required=True, help="Expanded workspace directory.")
     sync_parser.add_argument("--output", required=True, help="Translated expanded directory.")
+    sync_parser.add_argument(
+        "--template-organization-id",
+        help="Optional organizationId to write into the translated template.json.",
+    )
+    sync_parser.add_argument(
+        "--template-id",
+        help="Optional templateId to write into the translated template.json.",
+    )
+    sync_parser.add_argument(
+        "--template-name",
+        help="Optional name to write into the translated template.json.",
+    )
+    sync_parser.add_argument(
+        "--template-version",
+        help="Optional version to write into the translated template.json.",
+    )
     return parser
 
 
@@ -51,6 +67,10 @@ def main() -> None:
         tree_dir=args.tree,
         source_dir=args.source,
         output_dir=args.output,
+        template_organization_id=args.template_organization_id,
+        template_id=args.template_id,
+        template_name=args.template_name,
+        template_version=args.template_version,
     )
     print(f"SUCCESS: Translated expanded template written to {output_dir}")
 
