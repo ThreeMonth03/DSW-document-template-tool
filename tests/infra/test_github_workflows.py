@@ -505,8 +505,20 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
         in workflow_text
     )
     assert "document-template-preview-${{ env.TRANSLATED_TEMPLATE_VERSION }}" in workflow_text
-    assert "template-repo/outputs/project-render/" in workflow_text
-    assert "template-repo/outputs/translated-regression/" in workflow_text
+    preview_upload_step = next(
+        step
+        for step in workflow["jobs"]["translation-sync"]["steps"]
+        if step["name"] == "Upload sample project preview"
+    )
+    assert preview_upload_step["with"]["path"].splitlines() == [
+        "${{ runner.temp }}/document-template-preview/",
+        "tooling-repo/outputs/ci-dsw/",
+    ]
+    assert "Stage sample project preview artifact" in workflow_text
+    assert 'artifact_dir="$RUNNER_TEMP/document-template-preview"' in workflow_text
+    assert 'if [ ! -f "$candidate" ] || [ -L "$candidate" ]; then' in workflow_text
+    assert "template-repo/outputs/project-render/\n" not in workflow_text
+    assert "template-repo/outputs/translated-regression/\n" not in workflow_text
     assert "regression-report-v$TRANSLATED_TEMPLATE_VERSION.json" in workflow_text
     assert "regression-coverage-v$TRANSLATED_TEMPLATE_VERSION.json" in workflow_text
     assert "passed complete generated-fixture render coverage" in workflow_text

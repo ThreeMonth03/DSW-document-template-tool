@@ -386,14 +386,38 @@ jobs:
         working-directory: tooling-repo
         run: make stop-ci-dsw
 
+      - name: Stage sample project preview artifact
+        if: ${{ always() && env.PROJECT_REF != '' }}
+        run: |
+          set -euo pipefail
+          artifact_dir="$RUNNER_TEMP/document-template-preview"
+          preview_output="$GITHUB_WORKSPACE/template-repo/$PROJECT_RENDER_OUTPUT"
+          regression_output="$GITHUB_WORKSPACE/template-repo/outputs/translated-regression/$SOURCE_TEMPLATE_ID/v$TRANSLATED_TEMPLATE_VERSION/$TRANSLATION_TARGET_LABEL"
+          rm -rf "$artifact_dir"
+          mkdir -p "$artifact_dir"
+
+          for candidate in \
+            "$preview_output" \
+            "$preview_output.json" \
+            "$(dirname "$preview_output")/failed.json" \
+            "$regression_output/regression_report.json" \
+            "$regression_output/random-project-coverage.json"; do
+            if [ -e "$candidate" ] || [ -L "$candidate" ]; then
+              if [ ! -f "$candidate" ] || [ -L "$candidate" ]; then
+                echo "::error title=Unsafe preview artifact::Expected a regular file: $candidate"
+                exit 1
+              fi
+              cp -- "$candidate" "$artifact_dir/$(basename "$candidate")"
+            fi
+          done
+
       - name: Upload sample project preview
         if: ${{ always() && env.PROJECT_REF != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: document-template-preview-${{ env.TRANSLATED_TEMPLATE_VERSION }}
           path: |
-            template-repo/outputs/project-render/
-            template-repo/outputs/translated-regression/
+            ${{ runner.temp }}/document-template-preview/
             tooling-repo/outputs/ci-dsw/
           if-no-files-found: warn
 
