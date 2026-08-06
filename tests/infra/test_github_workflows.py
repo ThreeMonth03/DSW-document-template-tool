@@ -390,6 +390,14 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
         "${{ github.event_name == 'pull_request' && "
         "github.event.pull_request.head.sha || '__VERSION_BRANCH__' }}"
     )
+    assert checkout_step["with"]["persist-credentials"] == "false"
+    auto_commit_step = next(
+        step
+        for step in workflow["jobs"]["translation-sync"]["steps"]
+        if step["name"] == "Auto-commit repaired translation inputs"
+    )
+    assert auto_commit_step["env"]["GH_TOKEN"] == "${{ github.token }}"
+    assert 'git -c http.https://github.com/.extraheader="$auth_header"' in auto_commit_step["run"]
     assert "github.event.pull_request.head.ref" in workflow_text
     assert "github.event.pull_request.head.sha" in workflow_text
     tooling_checkout_step = next(
@@ -398,6 +406,7 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
         if step["name"] == "Checkout DSW document-template tooling"
     )
     assert tooling_checkout_step["id"] == "tooling_checkout"
+    assert tooling_checkout_step["with"]["persist-credentials"] == "false"
     for step_name in ("Collect local DSW logs", "Stop local DSW stack"):
         cleanup_step = next(
             step
@@ -427,7 +436,7 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
     assert '"$TRANSLATION_TREE_DIR/.translation-tree/manifest.json" \\' in workflow_text
     assert '"$TRANSLATION_TREE_DIR/outline.md" \\' in workflow_text
     assert '"$TRANSLATION_TREE_DIR/tree"' in workflow_text
-    assert 'git push origin "HEAD:refs/heads/$TARGET_REF"' in workflow_text
+    assert 'push origin "HEAD:refs/heads/$TARGET_REF"' in workflow_text
     assert '--target-branch "$GITHUB_REF_NAME"' not in workflow_text
     assert '.venv/bin/dsw-template-tree" sync' in workflow_text
     assert '.venv/bin/dsw-template-tree" audit-output' in workflow_text

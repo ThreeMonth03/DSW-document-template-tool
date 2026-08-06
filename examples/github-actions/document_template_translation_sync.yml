@@ -67,6 +67,7 @@ jobs:
             github.event.pull_request.head.sha || '__VERSION_BRANCH__' }}
           path: template-repo
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Checkout DSW document-template tooling
         id: tooling_checkout
@@ -75,6 +76,7 @@ jobs:
           repository: ${{ env.TOOLING_REPOSITORY }}
           ref: ${{ env.TOOLING_REF }}
           path: tooling-repo
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -132,6 +134,7 @@ jobs:
           }}
         working-directory: template-repo
         env:
+          GH_TOKEN: ${{ github.token }}
           TARGET_REF: >-
             ${{ github.event_name == 'pull_request' &&
             github.event.pull_request.head.ref || '__VERSION_BRANCH__' }}
@@ -158,7 +161,9 @@ jobs:
             "$TRANSLATION_TREE_DIR/tree"
           git commit -m "chore(sync): refresh document template translations"
           echo "repaired_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          git push origin "HEAD:refs/heads/$TARGET_REF"
+          auth_header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.https://github.com/.extraheader="$auth_header" \
+            push origin "HEAD:refs/heads/$TARGET_REF"
 
           {
             echo "## Auto-committed translation repairs"
