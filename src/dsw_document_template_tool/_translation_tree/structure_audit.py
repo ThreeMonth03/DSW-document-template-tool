@@ -464,11 +464,11 @@ def _html_single_tag_signature(tag: str) -> str | None:
     name = name_match.group("name").lower()
     if name_match.group("closing"):
         return None
-    if name in DECORATIVE_HTML_TAGS:
-        return None
 
     attr_text = tag[name_match.end() :].rstrip(">").rstrip("/").strip()
     attrs = _parse_html_attrs(attr_text)
+    if name in DECORATIVE_HTML_TAGS and not attrs:
+        return None
     attr_parts: list[str] = []
     for attr_name in sorted(attrs):
         attr_name_lower = attr_name.lower()
