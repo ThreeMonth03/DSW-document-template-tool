@@ -58,6 +58,29 @@ def test_missing_clean_artifact_root_fails_early(
         module.main()
 
 
+def test_replace_tree_rejects_artifact_symlinks(
+    repo_root: Path,
+    tmp_path: Path,
+) -> None:
+    """Artifact links must not materialize files from outside the artifact."""
+
+    module = _load_migration_pr_module(repo_root)
+    source = tmp_path / "artifact"
+    destination = tmp_path / "checkout"
+    source.mkdir()
+    destination.mkdir()
+    (destination / "existing.txt").write_text("keep me", encoding="utf-8")
+    secret = tmp_path / "runner-secret.txt"
+    secret.write_text("CI_TOKEN=secret", encoding="utf-8")
+    (source / "leak.txt").symlink_to(secret)
+
+    with pytest.raises(SystemExit, match="artifact tree containing symlinks"):
+        module._replace_tree(source, destination)
+
+    assert (destination / "existing.txt").read_text(encoding="utf-8") == "keep me"
+    assert not (destination / "leak.txt").exists()
+
+
 def test_add_detached_remote_worktree_ignores_open_local_branch(
     repo_root: Path,
     tmp_path: Path,

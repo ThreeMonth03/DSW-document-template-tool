@@ -530,6 +530,19 @@ def restore_clean_target_workspace(
 
 
 def _replace_tree(source: Path, destination: Path) -> None:
+    symlinks = []
+    if source.is_symlink():
+        symlinks.append(source)
+    else:
+        for root, dirnames, filenames in os.walk(source):
+            root_path = Path(root)
+            symlinks.extend(
+                path for name in (*dirnames, *filenames) if (path := root_path / name).is_symlink()
+            )
+    if symlinks:
+        paths = "\n".join(f"- {path}" for path in symlinks)
+        raise SystemExit(f"Refusing to copy artifact tree containing symlinks:\n{paths}")
+
     if destination.exists():
         shutil.rmtree(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)
