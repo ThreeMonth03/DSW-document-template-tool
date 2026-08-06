@@ -1,0 +1,50 @@
+name: temporary-reapply-pr3
+
+on:
+  push:
+    branches:
+      - codex/propose-fix-for-jinja-quote-breakout-vulnerability
+
+permissions:
+  contents: write
+
+jobs:
+  reapply:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out latest branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install Ruff
+        run: python -m pip install ruff==0.16.1
+      - name: Reapply Jinja literal escaping
+        run: |
+          set -euo pipefail
+          backup_ref="agent/backup-pr3-20260806"
+          git fetch --no-tags origin "$backup_ref:refs/remotes/origin/$backup_ref"
+          git diff --binary 7833aeb452f9bd36749156a2cd24fe4b8879e2cf "origin/$backup_ref" -- \
+            src/dsw_document_template_tool/_translation_tree/apply.py \
+            tests/unit/test_translation_tree.py > /tmp/pr.patch
+          test -s /tmp/pr.patch
+          git apply --3way --index /tmp/pr.patch
+          python -m ruff check --fix --config config/ruff.toml \
+            src/dsw_document_template_tool/_translation_tree/apply.py \
+            tests/unit/test_translation_tree.py
+          python -m ruff format --config config/ruff.toml \
+            src/dsw_document_template_tool/_translation_tree/apply.py \
+            tests/unit/test_translation_tree.py
+          git add -- \
+            src/dsw_document_template_tool/_translation_tree/apply.py \
+            tests/unit/test_translation_tree.py
+          git diff --cached --check
+          git rm -- .github/workflows/temporary-reapply-pr3.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "security: escape translated Jinja literals"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
