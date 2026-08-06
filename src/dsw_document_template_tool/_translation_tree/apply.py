@@ -76,11 +76,44 @@ def apply_unit_translations(
             source_unit_text=source_unit_text,
             translations=translations,
         )
+        translation_entry = translations.get((source_file, unit_span.key))
+        if translation_entry is not None and translation_entry.text.strip():
+            translation_text = _escape_jinja_literal_translation(
+                wrapper_body=wrapper_body,
+                unit_span=unit_span,
+                translation_text=translation_text,
+            )
         rebuilt_parts.append(translation_text)
         cursor = unit_span.end
 
     rebuilt_parts.append(wrapper_body[cursor:])
     return "".join(rebuilt_parts)
+
+
+def _escape_jinja_literal_translation(
+    *, wrapper_body: str, unit_span: UnitSpan, translation_text: str
+) -> str:
+    """Keep translator text inside the Jinja string literal that contains its unit."""
+
+    if unit_span.start == 0 or unit_span.end >= len(wrapper_body):
+        return translation_text
+    quote = wrapper_body[unit_span.start - 1]
+    if quote not in {'"', "'"} or wrapper_body[unit_span.end] != quote:
+        return translation_text
+    if not any(
+        token.kind in {"jinja_block", "jinja_expr"}
+        and token.start < unit_span.start
+        and unit_span.end < token.end
+        for token in _lex_source_tokens(wrapper_body)
+    ):
+        return translation_text
+
+    return (
+        translation_text.replace("\\", "\\\\")
+        .replace(quote, "\\" + quote)
+        .replace("\r", "\\r")
+        .replace("\n", "\\n")
+    )
 
 
 def _validate_unit_span(
