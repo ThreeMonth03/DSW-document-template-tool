@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 
@@ -25,6 +26,16 @@ def validate_template_dir(source_dir: Path) -> None:
     template_json = source_dir / "template.json"
     if not template_json.is_file():
         raise TemplateTransformError(f"Missing template.json in {source_dir}")
+
+    for root, directory_names, file_names in os.walk(source_dir, followlinks=False):
+        root_path = Path(root)
+        for name in directory_names + file_names:
+            path = root_path / name
+            if path.is_symlink():
+                relative_path = path.relative_to(source_dir)
+                raise TemplateTransformError(
+                    f"Template contains unsupported symbolic link: {relative_path}"
+                )
 
 
 def snapshot_tree(root_dir: Path) -> dict[str, bytes]:
