@@ -131,19 +131,23 @@ def reset_output_dir(output_dir: Path) -> None:
 def stage_file(spec: AssetSpec, output_dir: Path) -> Path | None:
     """Copy one file into the release asset directory."""
 
+    if spec.source.is_symlink():
+        raise SystemExit(f"Release asset file must not be a symbolic link: {spec.source}")
     if not spec.source.is_file():
         if spec.optional:
             return None
         raise SystemExit(f"Required release asset file is missing: {spec.source}")
 
     destination = safe_destination(output_dir, spec.name)
-    shutil.copy2(spec.source, destination)
+    shutil.copy2(spec.source, destination, follow_symlinks=False)
     return destination
 
 
 def stage_directory_archive(spec: AssetSpec, output_dir: Path) -> Path | None:
     """Zip one directory into the release asset directory."""
 
+    if spec.source.is_symlink():
+        raise SystemExit(f"Release asset directory must not be a symbolic link: {spec.source}")
     if not spec.source.is_dir():
         if spec.optional:
             return None
@@ -153,8 +157,13 @@ def stage_directory_archive(spec: AssetSpec, output_dir: Path) -> Path | None:
 
     destination = safe_destination(output_dir, spec.name)
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        source_root = spec.source.resolve()
         base = spec.source.parent
         for path in sorted(spec.source.rglob("*")):
+            if path.is_symlink():
+                raise SystemExit(f"Release asset directory contains a symbolic link: {path}")
+            if not path.resolve().is_relative_to(source_root):
+                raise SystemExit(f"Release asset path escapes source directory: {path}")
             if path.is_file():
                 archive.write(path, path.relative_to(base))
     return destination

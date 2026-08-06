@@ -188,6 +188,15 @@ jobs:
             outputs/document-templates/dsw-science-europe/**/scaffold/
             outputs/project-render/dsw-science-europe/**/scaffold/
 
+      - name: Stage clean scaffold release assets
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
+        run: |
+          python scripts/ci/publish_clean_scaffold_releases.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --run-id "$GITHUB_RUN_ID" \
+            --commit-sha "$GITHUB_SHA" \
+            --dry-run
+
       - name: Publish clean scaffold release assets
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
         env:
@@ -196,7 +205,8 @@ jobs:
           python scripts/ci/publish_clean_scaffold_releases.py \
             --repository "$GITHUB_REPOSITORY" \
             --run-id "$GITHUB_RUN_ID" \
-            --commit-sha "$GITHUB_SHA"
+            --commit-sha "$GITHUB_SHA" \
+            --skip-staging
 
       - name: Stop local DSW stack
         if: always()

@@ -125,6 +125,51 @@ def test_stage_release_assets_fails_for_missing_required_asset(tmp_path: Path) -
     assert "Required release asset file is missing" in result.stderr
 
 
+def test_stage_release_assets_rejects_symlink_file(tmp_path: Path) -> None:
+    secret = tmp_path / "secret"
+    secret.write_text("GH_TOKEN=secret\n", encoding="utf-8")
+    link = tmp_path / "asset"
+    link.symlink_to(secret)
+
+    result = run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--output-dir",
+            str(tmp_path / "release"),
+            "--notes-title",
+            "Symlink demo",
+            "--asset",
+            str(link),
+        ],
+    )
+
+    assert result.returncode != 0
+    assert "must not be a symbolic link" in result.stderr
+
+
+def test_stage_release_assets_rejects_symlink_in_archive(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "leak").symlink_to("/proc/self/environ")
+
+    result = run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--output-dir",
+            str(tmp_path / "release"),
+            "--notes-title",
+            "Symlink demo",
+            "--archive-dir",
+            f"{workspace}=workspace.zip",
+        ],
+    )
+
+    assert result.returncode != 0
+    assert "contains a symbolic link" in result.stderr
+
+
 def test_publish_clean_scaffold_releases_stages_assets_in_dry_run(tmp_path: Path) -> None:
     """The clean scaffold publisher should own release staging and gh calls."""
 
