@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import stat
 from pathlib import Path
 from typing import Any
 
@@ -18,11 +20,11 @@ def write_public_output_readme(
     output_dir = Path(output_dir)
     readme_path = output_dir / "README.md"
     payload = _load_template_payload(output_dir)
-    public_readme = Path(public_readme_path) if public_readme_path is not None else None
-    if public_readme is not None and public_readme.is_file():
+    public_readme_content = _read_regular_file_without_following_symlinks(public_readme_path)
+    if public_readme_content is not None:
         readme_path.write_text(
             _render_configured_public_readme(
-                public_readme.read_text(encoding="utf-8"),
+                public_readme_content,
                 payload=payload,
             ),
             encoding="utf-8",
@@ -36,6 +38,23 @@ def write_public_output_readme(
         _render_public_readme(payload=payload, target_lang=target_lang),
         encoding="utf-8",
     )
+
+
+def _read_regular_file_without_following_symlinks(path: Path | None) -> str | None:
+    if path is None:
+        return None
+
+    try:
+        file_descriptor = os.open(Path(path), os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError:
+        return None
+
+    if not stat.S_ISREG(os.fstat(file_descriptor).st_mode):
+        os.close(file_descriptor)
+        return None
+
+    with os.fdopen(file_descriptor, encoding="utf-8") as public_readme:
+        return public_readme.read()
 
 
 def _load_template_payload(output_dir: Path) -> dict[str, Any] | None:

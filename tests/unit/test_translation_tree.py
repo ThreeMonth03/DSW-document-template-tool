@@ -2851,6 +2851,39 @@ def test_sync_translation_tree_uses_public_readme_when_available(
     )
 
 
+def test_sync_translation_tree_does_not_follow_public_readme_symlink(
+    tmp_path: Path,
+) -> None:
+    """A repository-controlled README symlink must not expose its target."""
+
+    compact_dir = _write_compact_template(tmp_path, "<p>Hello world.</p>")
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+    translated_expanded_dir = tmp_path / "translated-expanded"
+    sensitive_file = tmp_path / "runner-sensitive.txt"
+    sensitive_file.write_text("checkout_credentials=secret\n", encoding="utf-8")
+    public_readme = tmp_path / "public-readme.md"
+    public_readme.symlink_to(sensitive_file)
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    sync_translation_tree(
+        tree_dir=tree_dir,
+        source_dir=expanded_dir,
+        output_dir=translated_expanded_dir,
+        template_organization_id="dsw",
+        template_id="sample-zh-hant",
+        template_name="Sample Template (zh-Hant)",
+        template_version="1.0.0",
+        public_readme_path=public_readme,
+    )
+
+    readme = (translated_expanded_dir / "README.md").read_text(encoding="utf-8")
+    assert readme.startswith("# Sample Template (zh-Hant)\n")
+    assert "checkout_credentials=secret" not in readme
+
+
 def test_export_translation_tree_recovers_deleted_and_malformed_documents(
     tmp_path: Path,
 ) -> None:
