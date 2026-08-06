@@ -1,0 +1,48 @@
+name: temporary-reapply-pr1
+
+on:
+  push:
+    branches:
+      - codex/fix-auto-commit-leak-of-write-token
+
+permissions:
+  contents: write
+
+jobs:
+  reapply:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out latest branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install Ruff
+        run: python -m pip install ruff==0.16.1
+      - name: Reapply credential hardening
+        run: |
+          set -euo pipefail
+          backup_ref="agent/backup-pr1-20260806"
+          git fetch --no-tags origin "$backup_ref:refs/remotes/origin/$backup_ref"
+          git diff --binary 2838f8814a3316f0f19e10cff64341bc34229a61 "origin/$backup_ref" -- \
+            examples/github-actions/document_template_translation_sync.yml \
+            tests/infra/test_github_workflows.py > /tmp/pr.patch
+          test -s /tmp/pr.patch
+          git apply --3way --index /tmp/pr.patch
+          python -m ruff check --fix --config config/ruff.toml \
+            tests/infra/test_github_workflows.py
+          python -m ruff format --config config/ruff.toml \
+            tests/infra/test_github_workflows.py
+          git add -- \
+            examples/github-actions/document_template_translation_sync.yml \
+            tests/infra/test_github_workflows.py
+          git diff --cached --check
+          git rm -- .github/workflows/temporary-reapply-pr1.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "security: harden CI auto-commit credentials"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
