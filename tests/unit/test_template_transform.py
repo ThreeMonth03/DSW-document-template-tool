@@ -10,12 +10,14 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
+import pytest
 from jinja2 import Environment, StrictUndefined
 
 from dsw_document_template_tool._template_transform.science_europe_balanced_rules import (
     rewrite_science_europe_balanced_source_fragments,
 )
 from dsw_document_template_tool.template_transform import (
+    TemplateTransformError,
     compact_template_dir,
     expand_template_dir,
     explain_transform_workspace,
@@ -67,6 +69,23 @@ def _write_minimal_template_json(template_dir: Path) -> None:
         + "\n",
         encoding="utf-8",
     )
+
+
+def test_expand_rejects_symbolic_links(tmp_path: Path) -> None:
+    """Expansion must not materialize files referenced by an untrusted template."""
+
+    compact_dir = tmp_path / "compact"
+    compact_dir.mkdir()
+    _write_minimal_template_json(compact_dir)
+    secret_path = tmp_path / "runner-secret.txt"
+    secret_path.write_text("CI secret\n", encoding="utf-8")
+    (compact_dir / "leaked.txt").symlink_to(secret_path)
+
+    expanded_dir = tmp_path / "expanded"
+    with pytest.raises(TemplateTransformError, match="unsupported symbolic link: leaked.txt"):
+        expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+
+    assert not expanded_dir.exists()
 
 
 def test_expand_then_compact_roundtrips_template_tree(tmp_path: Path) -> None:
