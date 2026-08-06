@@ -14,6 +14,29 @@ import pytest
 import yaml
 
 
+def test_replace_tree_rejects_symlinks_without_modifying_destination(
+    repo_root: Path,
+    tmp_path: Path,
+) -> None:
+    """Artifact links must not copy runner-local file contents into a checkout."""
+
+    sync_module = _load_sync_module(repo_root)
+    source = tmp_path / "artifact"
+    destination = tmp_path / "checkout"
+    secret = tmp_path / "runner-secret.txt"
+    source.mkdir()
+    destination.mkdir()
+    secret.write_text("runner credential\n", encoding="utf-8")
+    (source / "leaked-secret.txt").symlink_to(secret)
+    (destination / "existing.txt").write_text("preserved\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="containing symlink"):
+        sync_module.replace_tree(source, destination)
+
+    assert (destination / "existing.txt").read_text(encoding="utf-8") == "preserved\n"
+    assert not (destination / "leaked-secret.txt").exists()
+
+
 def test_sync_translation_versions_creates_new_branch_from_clean_artifact(
     repo_root: Path,
     tmp_path: Path,

@@ -1196,6 +1196,17 @@ def branch_checked_out_in_worktree(repo: Path, branch: str) -> bool:
 def replace_tree(source: Path, destination: Path) -> None:
     """Replace one directory tree."""
 
+    symlink = (
+        source
+        if source.is_symlink()
+        else next(
+            (path for path in source.rglob("*") if path.is_symlink()),
+            None,
+        )
+    )
+    if symlink is not None:
+        raise ValueError(f"Refusing to copy directory tree containing symlink: {symlink}")
+
     if destination.exists():
         shutil.rmtree(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)
