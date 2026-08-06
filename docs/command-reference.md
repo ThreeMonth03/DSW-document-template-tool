@@ -277,12 +277,20 @@ scaffold artifacts. They do not publish to DSW.
 Download clean scaffold artifacts from a tool workflow run:
 
 ```shell
+TOOLING_RUN_ID=28346995193
 make download-clean-scaffold-artifacts \
   TOOL_GITHUB_REPO="$TOOL_GITHUB_REPO" \
+  CLEAN_SCAFFOLD_ARTIFACT_RUN_ID="$TOOLING_RUN_ID" \
   CLEAN_SCAFFOLD_ARTIFACT_OUTPUT_DIR=/tmp/clean-scaffolds
 ```
 
-Download from an exact run:
+Automated or write-enabled consumers must use an exact run id from a trusted
+producer run. Omitting `CLEAN_SCAFFOLD_ARTIFACT_RUN_ID` performs a
+latest-successful lookup; reserve that mode for manual investigation after
+verifying the selected run's event, branch, commit, and actor because
+pull-request runs also upload artifacts.
+
+The equivalent exact-run command is:
 
 ```shell
 TOOLING_RUN_ID=28346995193
