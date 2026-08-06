@@ -283,6 +283,8 @@ def test_sync_translation_versions_refreshes_existing_branch_from_clean_artifact
     existing_workflow = (
         translation_repo / ".github/workflows/document_template_translation_sync.yml"
     )
+    obsolete_workflow = translation_repo / ".github/workflows/weblate_translation_promote.yml"
+    obsolete_xliff = translation_repo / "weblate/dsw-science-europe.zh_Hant.xlf"
     old_compact.parent.mkdir(parents=True, exist_ok=True)
     old_translation_marker.parent.mkdir(parents=True, exist_ok=True)
     stale_project.parent.mkdir(parents=True, exist_ok=True)
@@ -291,6 +293,7 @@ def test_sync_translation_versions_refreshes_existing_branch_from_clean_artifact
     stale_workspace_km.parent.mkdir(parents=True, exist_ok=True)
     stale_migration_report.parent.mkdir(parents=True, exist_ok=True)
     existing_workflow.parent.mkdir(parents=True, exist_ok=True)
+    obsolete_xliff.parent.mkdir(parents=True, exist_ok=True)
     old_compact.write_text("old compact\n", encoding="utf-8")
     old_translation_marker.write_text("manual translation\n", encoding="utf-8")
     stale_project.write_text("stale branch-local project\n", encoding="utf-8")
@@ -301,6 +304,8 @@ def test_sync_translation_versions_refreshes_existing_branch_from_clean_artifact
     stale_migration_report.write_text('{"stale": true}\n', encoding="utf-8")
     stale_root_file.write_text("stale branch note\n", encoding="utf-8")
     existing_workflow.write_text("existing version workflow\n", encoding="utf-8")
+    obsolete_workflow.write_text("obsolete promotion workflow\n", encoding="utf-8")
+    obsolete_xliff.write_text("obsolete Weblate exchange\n", encoding="utf-8")
     _run_git(translation_repo, "add", ".")
     _run_git(translation_repo, "commit", "-m", "initialize v1.30.1")
     _run_git(translation_repo, "push", "-u", "origin", "sync/v1.30.1")
@@ -410,6 +415,14 @@ def test_sync_translation_versions_refreshes_existing_branch_from_clean_artifact
             "sync/v1.30.1:.github/workflows/document_template_translation_sync.yml",
         )
         == "existing version workflow\n"
+    )
+    assert not _git_path_exists(
+        translation_repo,
+        "sync/v1.30.1:.github/workflows/weblate_translation_promote.yml",
+    )
+    assert not _git_path_exists(
+        translation_repo,
+        "sync/v1.30.1:weblate/dsw-science-europe.zh_Hant.xlf",
     )
     assert not _git_path_exists(
         translation_repo,
