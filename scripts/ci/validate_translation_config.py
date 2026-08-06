@@ -78,6 +78,7 @@ def remote_tag_exists(remote: str, tag: str) -> bool:
             "ls-remote",
             "--exit-code",
             "--tags",
+            "--",
             normalize_git_remote(remote),
             f"refs/tags/{tag}",
         ],

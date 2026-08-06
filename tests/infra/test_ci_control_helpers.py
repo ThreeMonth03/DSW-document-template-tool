@@ -68,7 +68,7 @@ import sys
 from pathlib import Path
 
 Path({str(git_log)!r}).write_text(" ".join(sys.argv[1:]) + "\\n", encoding="utf-8")
-if sys.argv[1:4] == ["ls-remote", "--exit-code", "--tags"]:
+if sys.argv[1:5] == ["ls-remote", "--exit-code", "--tags", "--"]:
     raise SystemExit(0)
 raise SystemExit(f"unexpected git args: {{sys.argv[1:]}}")
 """,
@@ -97,9 +97,14 @@ raise SystemExit(f"unexpected git args: {{sys.argv[1:]}}")
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "https://github.com/ds-wizard/science-europe-template.git" in git_log.read_text(
-        encoding="utf-8",
-    )
+    assert git_log.read_text(encoding="utf-8").split() == [
+        "ls-remote",
+        "--exit-code",
+        "--tags",
+        "--",
+        "https://github.com/ds-wizard/science-europe-template.git",
+        "refs/tags/v1.29.1",
+    ]
 
 
 def test_validate_translation_config_rejects_missing_upstream_tags(
