@@ -111,23 +111,30 @@ PUBLIC_TEMPLATE_REPO_DIR=/path/to/science-europe-template-zh_Hant
 Download clean scaffold artifacts:
 
 ```shell
-make download-clean-scaffold-artifacts \
-  TOOL_GITHUB_REPO="$TOOL_GITHUB_REPO" \
-  CLEAN_SCAFFOLD_ARTIFACT_OUTPUT_DIR=/tmp/clean-scaffolds
-```
-
-The public repository normally cannot receive a cross-repository
-`workflow_run` event from this tool repository. The operations workflow
-therefore downloads the latest successful tool-repo run by workflow name. If an
-operator passes an exact tool run id manually, prefer `--run-id` so the
-downloaded artifacts are tied to that exact run:
-
-```shell
 TOOLING_RUN_ID=123456789
 
 make download-clean-scaffold-artifacts \
   TOOL_GITHUB_REPO="$TOOL_GITHUB_REPO" \
   CLEAN_SCAFFOLD_ARTIFACT_RUN_ID="$TOOLING_RUN_ID" \
+  CLEAN_SCAFFOLD_ARTIFACT_OUTPUT_DIR=/tmp/clean-scaffolds
+```
+
+The public repository normally cannot receive a cross-repository
+`workflow_run` event from this tool repository. Pass the exact run id from a
+trusted `master` push, scheduled run, or operator-dispatched run into the
+operations workflow instead. Automated sync must use `--run-id` (exposed by the
+Make target as `CLEAN_SCAFFOLD_ARTIFACT_RUN_ID`) so downloaded artifacts are
+tied to a reviewed producer run. Do not resolve the latest successful run by
+workflow name in automation: pull requests also run the producer workflow and
+upload artifacts.
+
+Lookup by workflow name remains available only for manual repair or exploratory
+maintenance where an operator verifies the selected run's event, branch, commit,
+and actor before any output is used:
+
+```shell
+make download-clean-scaffold-artifacts \
+  TOOL_GITHUB_REPO="$TOOL_GITHUB_REPO" \
   CLEAN_SCAFFOLD_ARTIFACT_OUTPUT_DIR=/tmp/clean-scaffolds
 ```
 
@@ -230,9 +237,11 @@ gh workflow run document_template_translation_sync.yml \
   --ref "$TRANSLATION_OPERATIONS_BRANCH"
 ```
 
-In the current public-repository design, that run downloads the latest successful
-clean scaffold artifacts from the tool repo and updates `translation-config.yml`
-on the public repository operations branch. It creates or refreshes only
+The public-repository workflow must be configured with the exact trusted tool
+run id; do not let a write-enabled sync select the latest successful run by
+workflow name. It downloads clean scaffold artifacts from that pinned run and
+updates `translation-config.yml` on the public repository operations branch. It
+creates or refreshes only
 policy-enabled `sync/v*` branches and may create exact-source synchronization
 PRs. These PRs fill blank units and update existing translations only for
 structurally identical source units. Routine version-branch sync preserves existing workflow files; use

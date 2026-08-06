@@ -113,9 +113,12 @@ gh workflow run document_template_translation_sync.yml \
   --ref "$TRANSLATION_OPERATIONS_BRANCH"
 ```
 
-That operations workflow is owned by the public repository. In the current
-public-repository design, it downloads the latest successful tool-repo clean
-scaffold artifacts, updates its own `translation-config.yml`, creates or
+That operations workflow is owned by the public repository. Configure or
+dispatch it with the exact run id of a reviewed tool-repo `master`, scheduled,
+or operator-dispatched run. A write-enabled sync must not select the latest
+successful run by workflow name because pull-request runs also publish clean
+scaffold artifacts. The workflow downloads artifacts from the pinned run,
+updates its own `translation-config.yml`, creates or
 refreshes only policy-enabled `sync/v*` branches, and opens cross-version
 synchronization PRs
 according to public repository policy. Review the public repository run there;
@@ -180,9 +183,11 @@ Then run a dry-run against the public repository:
 ```shell
 TOOL_REPO_DIR=/path/to/document-template-tool
 PUBLIC_TEMPLATE_REPO_DIR=/path/to/science-europe-template-zh_Hant
+TOOLING_RUN_ID=123456789
 
 make download-clean-scaffold-artifacts \
   TOOL_GITHUB_REPO="$TOOL_GITHUB_REPO" \
+  CLEAN_SCAFFOLD_ARTIFACT_RUN_ID="$TOOLING_RUN_ID" \
   CLEAN_SCAFFOLD_ARTIFACT_OUTPUT_DIR=/tmp/clean-scaffolds
 
 make sync-translation-version-branches \
