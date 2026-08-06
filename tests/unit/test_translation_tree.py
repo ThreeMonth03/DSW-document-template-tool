@@ -2568,6 +2568,43 @@ def test_sync_translation_tree_translates_jinja_expression_literals_in_place(
     assert '{{ renderResponsibility("負責維護已完成的資源。") }}' in translated_text
 
 
+def test_sync_translation_tree_escapes_jinja_literal_quote_breakout(
+    tmp_path: Path,
+) -> None:
+    """Translator text must remain data when inserted into a Jinja string literal."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+{%- set collectedTypes = [] -%}
+{%- do collectedTypes.append("questionnaires") -%}
+""",
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+    translated_expanded_dir = tmp_path / "translated-expanded"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    document_path = _find_translation_doc(tree_dir, "questionnaires")
+    payload = 'x") or cycler.__init__.__globals__.os.system("id") or ("'
+    _write_translation_block(document_path, payload)
+    sync_translation_tree(
+        tree_dir=tree_dir,
+        source_dir=expanded_dir,
+        output_dir=translated_expanded_dir,
+    )
+
+    translated_text = (translated_expanded_dir / "src" / "index.html.j2").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        'append("x\\") or cycler.__init__.__globals__.os.system(\\"id\\") or (\\"")'
+        in translated_text
+    )
+    assert 'append("x") or cycler' not in translated_text
+
+
 def test_audit_translated_template_structure_allows_text_and_literal_translation(
     tmp_path: Path,
 ) -> None:
