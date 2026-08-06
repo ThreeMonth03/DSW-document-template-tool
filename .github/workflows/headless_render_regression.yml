@@ -131,11 +131,13 @@ jobs:
           .venv/bin/dsw-tdk --version
 
       - name: Build clean upstream version artifacts
+        env:
+          UPSTREAM_TEMPLATE_ARTIFACT_METAMODEL_VERSION: ${{ matrix.metamodel_version }}
         run: |
           make build-upstream-artifacts \
             UPSTREAM_TEMPLATE_REPOSITORY="$UPSTREAM_TEMPLATE_REPOSITORY" \
             UPSTREAM_TEMPLATE_ARTIFACT_REFS="${{ github.event.inputs.upstream_template_artifact_refs || matrix.upstream_template_artifact_refs }}" \
-            UPSTREAM_TEMPLATE_ARTIFACT_METAMODEL_VERSION="${{ matrix.metamodel_version }}"
+            UPSTREAM_TEMPLATE_ARTIFACT_METAMODEL_VERSION="$UPSTREAM_TEMPLATE_ARTIFACT_METAMODEL_VERSION"
 
       - name: Generate expanded compatibility ledger
         run: make generate-compat-ledger
@@ -148,9 +150,11 @@ jobs:
 
       - name: Summarize preview regression coverage
         if: always()
+        env:
+          REGRESSION_SUMMARY_LABEL: Metamodel ${{ matrix.metamodel_version }} Render Regression
         run: |
           make summarize-regression-coverage \
-            REGRESSION_SUMMARY_LABEL="Metamodel ${{ matrix.metamodel_version }} Render Regression"
+            REGRESSION_SUMMARY_LABEL="$REGRESSION_SUMMARY_LABEL"
 
       - name: Render clean upstream version previews
         env:

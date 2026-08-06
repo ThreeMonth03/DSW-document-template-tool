@@ -23,6 +23,7 @@ DISCOVERY_ROW_PATTERN = re.compile(
     r"\|\s*(?P<runtime>.*?)\s*"
     r"\|\s*(?P<status>.*?)\s*\|$"
 )
+METAMODEL_VERSION_PATTERN = re.compile(r"^[0-9]+(?:\.[0-9]+)*$")
 
 
 @dataclass(frozen=True)
@@ -219,11 +220,17 @@ def parse_discovery_rows(report: str) -> list[DiscoveryRow]:
         match = DISCOVERY_ROW_PATTERN.match(line.strip())
         if match is None:
             continue
+        metamodel_version = match.group("metamodel")
+        if METAMODEL_VERSION_PATTERN.fullmatch(metamodel_version) is None:
+            raise SystemExit(
+                "Discovery report contains invalid metamodelVersion "
+                f"{metamodel_version!r}; expected a numeric dotted version"
+            )
         rows.append(
             DiscoveryRow(
                 ref=match.group("ref"),
                 version=match.group("version"),
-                metamodel_version=match.group("metamodel"),
+                metamodel_version=metamodel_version,
                 status=match.group("status").strip(),
             )
         )
