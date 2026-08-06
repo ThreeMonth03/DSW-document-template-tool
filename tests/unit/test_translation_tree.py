@@ -2650,6 +2650,36 @@ def test_audit_translated_template_structure_reports_lost_link_attribute(
     assert "HTML tag structure changed" in html_issue.message
 
 
+@pytest.mark.parametrize("tag", ["em", "small", "strong"])
+def test_audit_translated_template_structure_reports_attributed_decorative_tag(
+    tmp_path: Path,
+    tag: str,
+) -> None:
+    """Decorative markup must not hide translator-supplied HTML attributes."""
+
+    compact_dir = _write_compact_template(tmp_path, "<p>Hello.</p>\n")
+    expanded_dir = tmp_path / "expanded"
+    translated_dir = tmp_path / "translated"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    shutil.copytree(expanded_dir, translated_dir)
+
+    translated_file = translated_dir / "src" / "index.html.j2"
+    translated_file.write_text(
+        translated_file.read_text(encoding="utf-8").replace(
+            "Hello.",
+            f'<{tag} onclick="alert(1)">Bonjour.</{tag}>',
+        ),
+        encoding="utf-8",
+    )
+
+    issues = audit_translated_template_structure(
+        source_dir=expanded_dir,
+        output_dir=translated_dir,
+    )
+
+    assert "changed-html-structure" in {issue.code for issue in issues}
+
+
 def test_audit_translated_template_structure_reports_changed_placeholder(
     tmp_path: Path,
 ) -> None:
