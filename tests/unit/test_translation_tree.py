@@ -1144,6 +1144,28 @@ def test_export_translation_tree_translates_rendered_list_initializer(
     )
 
 
+def test_export_translation_tree_protects_list_initializer_used_in_href(
+    tmp_path: Path,
+) -> None:
+    """Joined URL fragments must not be exported as translator-editable text."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        """
+{% set href_parts = ['https://', 'trusted.example/docs'] %}
+<p><a href="{{ href_parts|join('') }}">Docs</a></p>
+""",
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    docs = _read_translation_docs(tree_dir)
+    assert "trusted.example/docs" not in "\n".join(docs)
+
+
 def test_export_translation_tree_keeps_control_flow_sentence_parts_together(
     tmp_path: Path,
 ) -> None:

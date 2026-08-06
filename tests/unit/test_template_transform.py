@@ -412,6 +412,28 @@ def test_expand_marks_only_rendered_string_list_initializers(tmp_path: Path) -> 
     assert _render_template(expanded_text, {}) == _render_template(source_text, {})
 
 
+def test_expand_does_not_mark_list_initializer_rendered_in_html_attribute(
+    tmp_path: Path,
+) -> None:
+    """URL fragments joined in structural attributes must remain protected."""
+
+    compact_dir = tmp_path / "compact"
+    (compact_dir / "src").mkdir(parents=True)
+    _write_minimal_template_json(compact_dir)
+    source_text = """
+{% set href_parts = ['https://', 'trusted.example/docs'] %}
+<p><a href="{{ href_parts|join('') }}">Docs</a></p>
+""".lstrip()
+    (compact_dir / "src" / "index.html.j2").write_text(source_text, encoding="utf-8")
+
+    expanded_dir = tmp_path / "expanded"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+
+    expanded_text = (expanded_dir / "src" / "index.html.j2").read_text(encoding="utf-8")
+    assert "__tr_block" not in expanded_text.splitlines()[0]
+    assert "trusted.example/docs" in expanded_text
+
+
 def test_expand_rewrites_simple_common_prefix_branches_reversibly(
     tmp_path: Path,
 ) -> None:

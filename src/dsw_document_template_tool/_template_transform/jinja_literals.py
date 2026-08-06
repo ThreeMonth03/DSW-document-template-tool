@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from .jinja_blocks import jinja_block_inner
 from .scanner import (
+    HTML_TAG_PATTERN,
     JINJA_BLOCK_PATTERN,
     JINJA_EXPR_PATTERN,
     JINJA_STRING_LITERAL_PATTERN,
@@ -60,10 +61,13 @@ def parse_jinja_string_list_initializer(
 
 
 def rendered_joined_collection_names(source_text: str) -> set[str]:
-    """Return simple collection names rendered through a Jinja ``join`` filter."""
+    """Return collections joined in text, excluding structural HTML markup."""
 
     names: set[str] = set()
+    html_tag_regions = [match.span() for match in HTML_TAG_PATTERN.finditer(source_text)]
     for match in JINJA_EXPR_PATTERN.finditer(source_text):
+        if any(start <= match.start() < end for start, end in html_tag_regions):
+            continue
         pipeline = match.group("expr").split("|")
         if len(pipeline) < 2 or not any(
             re.match(r"\s*join(?:\s*\(|\s*$)", stage) for stage in pipeline[1:]
