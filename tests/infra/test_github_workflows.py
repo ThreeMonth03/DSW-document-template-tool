@@ -133,10 +133,17 @@ def test_headless_render_regression_workflow(repo_root: Path) -> None:
     publish_step = next(
         step for step in render_steps if step["name"] == "Publish clean scaffold release assets"
     )
+    stage_step = next(
+        step for step in render_steps if step["name"] == "Stage clean scaffold release assets"
+    )
     assert publish_step["if"] == (
         "github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || "
         "github.ref == 'refs/heads/master'"
     )
+    assert "env" not in stage_step
+    assert "--dry-run" in stage_step["run"]
+    assert "--skip-staging" in publish_step["run"]
+    assert publish_step["env"]["GH_TOKEN"] == "${{ github.token }}"
     assert "scripts/ci/publish_clean_scaffold_releases.py" in workflow_text
     assert "scripts/ci/stage_release_assets.py" not in workflow_text
     assert "for package in" not in workflow_text

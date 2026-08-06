@@ -57,7 +57,8 @@ def main() -> None:
             source_template_id=args.source_template_id,
             translation_locale=args.translation_locale,
         )
-        stage_clean_scaffold_release(release)
+        if not args.skip_staging:
+            stage_clean_scaffold_release(release)
         if args.dry_run:
             print(f"INFO: dry-run staged {release.release_tag} in {release.release_dir}")
             continue
@@ -73,6 +74,11 @@ def parse_args() -> argparse.Namespace:
         help="Commit SHA recorded in release notes and used when creating a release.",
     )
     parser.add_argument("--dry-run", action="store_true", help="Stage assets without using gh.")
+    parser.add_argument(
+        "--skip-staging",
+        action="store_true",
+        help="Publish assets staged by an earlier token-free invocation.",
+    )
     parser.add_argument("--outputs-root", type=Path, default=Path("outputs"))
     parser.add_argument(
         "--release-root", type=Path, default=Path("outputs/release-assets/clean-scaffold")
