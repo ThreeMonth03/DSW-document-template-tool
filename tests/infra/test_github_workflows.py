@@ -111,7 +111,17 @@ def test_headless_render_regression_workflow(repo_root: Path) -> None:
     )
     assert summary_step["if"] == "always()"
     assert "make summarize-regression-coverage" in summary_step["run"]
-    assert "matrix.metamodel_version" in summary_step["run"]
+    assert "matrix.metamodel_version" not in summary_step["run"]
+    assert summary_step["env"]["REGRESSION_SUMMARY_LABEL"] == (
+        "Metamodel ${{ matrix.metamodel_version }} Render Regression"
+    )
+    artifact_step = next(
+        step for step in render_steps if step["name"] == "Build clean upstream version artifacts"
+    )
+    assert "matrix.metamodel_version" not in artifact_step["run"]
+    assert artifact_step["env"]["UPSTREAM_TEMPLATE_ARTIFACT_METAMODEL_VERSION"] == (
+        "${{ matrix.metamodel_version }}"
+    )
     assert "make render-project" not in workflow_text
     assert "make ci-dsw-logs" in workflow_text
     assert "make stop-ci-dsw" in workflow_text

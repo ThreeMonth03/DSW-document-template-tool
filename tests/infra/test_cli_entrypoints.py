@@ -425,6 +425,19 @@ def test_create_dsw_compat_pr_defaults_to_metamodel_specific_branch() -> None:
     )
 
 
+def test_create_dsw_compat_pr_rejects_unsafe_metamodel_version() -> None:
+    """Upstream metamodel values must not carry shell syntax into CI configuration."""
+
+    report = (
+        "| Ref | Version | metamodelVersion | Runtime | Status |\n"
+        "| --- | --- | --- | --- | --- |\n"
+        "| `v1.31.0` | `v1.31.0` | `$(touch${IFS}/tmp/pwn)` | - | unsupported |\n"
+    )
+
+    with pytest.raises(SystemExit, match="invalid metamodelVersion"):
+        compat_probe.parse_discovery_rows(report)
+
+
 def test_create_dsw_compat_pr_can_probe_multiple_new_metamodels() -> None:
     """A long gap with multiple new metamodels should still generate probe rows."""
 
