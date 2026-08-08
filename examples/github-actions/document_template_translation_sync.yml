@@ -91,7 +91,17 @@ jobs:
           .venv/bin/python -m pip install "dsw-tdk==$DSW_TDK_VERSION"
           .venv/bin/dsw-tdk --version
 
-      - name: Refresh expanded template and translation tree
+      - name: Regenerate expanded template
+        run: |
+          set -euo pipefail
+          HOST_ROOT="$GITHUB_WORKSPACE/template-repo"
+          TOOL_ROOT="$GITHUB_WORKSPACE/tooling-repo"
+
+          "$TOOL_ROOT/.venv/bin/dsw-template-transform" expand \
+            --source "$HOST_ROOT/$COMPACT_TEMPLATE_DIR" \
+            --output "$HOST_ROOT/$EXPANDED_TEMPLATE_DIR"
+
+      - name: Refresh translation tree
         if: ${{ env.REFRESH_TRANSLATION_INPUTS == 'true' }}
         run: |
           set -euo pipefail
@@ -99,10 +109,6 @@ jobs:
           TOOL_ROOT="$GITHUB_WORKSPACE/tooling-repo"
           FRESH_TRANSLATION_TREE="$(mktemp -d)"
           MERGED_TRANSLATION_TREE="$(mktemp -d)"
-
-          "$TOOL_ROOT/.venv/bin/dsw-template-transform" expand \
-            --source "$HOST_ROOT/$COMPACT_TEMPLATE_DIR" \
-            --output "$HOST_ROOT/$EXPANDED_TEMPLATE_DIR"
 
           "$TOOL_ROOT/.venv/bin/dsw-template-tree" export \
             --source "$HOST_ROOT/$EXPANDED_TEMPLATE_DIR" \
