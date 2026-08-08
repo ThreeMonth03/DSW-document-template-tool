@@ -1,0 +1,39 @@
+name: Format PR 16
+
+on:
+  push:
+    branches:
+      - codex/fix-frozen-branch-vulnerability
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: codex/fix-frozen-branch-vulnerability
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: make install-dev
+
+      - name: Format and remove helper
+        run: |
+          set -euo pipefail
+          make format
+          rm .github/workflows/_agent_format_pr16.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "style: format PR 16"
+          git push origin HEAD:codex/fix-frozen-branch-vulnerability
