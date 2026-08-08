@@ -326,12 +326,12 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
         step for step in translation_steps if step["name"] == "Regenerate expanded template"
     )
     assert "if" not in regenerate_step
-    assert "dsw-template-transform\" expand" in regenerate_step["run"]
+    assert 'dsw-template-transform" expand' in regenerate_step["run"]
     refresh_tree_step = next(
         step for step in translation_steps if step["name"] == "Refresh translation tree"
     )
     assert refresh_tree_step["if"] == "${{ env.REFRESH_TRANSLATION_INPUTS == 'true' }}"
-    assert "dsw-template-transform\" expand" not in refresh_tree_step["run"]
+    assert 'dsw-template-transform" expand' not in refresh_tree_step["run"]
     assert "github.actor != 'github-actions[bot]'" in workflow_text
     assert "skip-fork-pr" in workflow["jobs"]
     assert workflow["env"]["TOOLING_REPOSITORY"] == "__TOOLING_REPOSITORY__"
