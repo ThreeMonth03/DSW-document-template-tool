@@ -23,7 +23,6 @@ from cli_commands import (  # noqa: E402
 )
 from resolve_upstream_refs import normalize_git_remote, resolve_refs  # noqa: E402
 
-
 SEMANTIC_VERSION_RE = re.compile(
     r"^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)"
     r"(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)"
