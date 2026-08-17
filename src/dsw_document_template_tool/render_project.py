@@ -413,6 +413,16 @@ def _resolve_path_value(value: str, *, base_dir: Path) -> str:
     return value
 
 
+def _fixture_root(base_dir: Path) -> Path:
+    """Return the nearest repository fixture root, or the reference directory."""
+
+    resolved_base = base_dir.resolve()
+    for candidate in (resolved_base, *resolved_base.parents):
+        if candidate.name == "fixtures":
+            return candidate
+    return resolved_base
+
+
 def _contained_fixture_path(value: str, *, base_dir: Path, key: str) -> Path:
     """Resolve a repository fixture without allowing filesystem traversal."""
 
@@ -420,8 +430,8 @@ def _contained_fixture_path(value: str, *, base_dir: Path, key: str) -> Path:
     if path.is_absolute() or value.startswith("~"):
         raise TemplateToolError(f"Project reference `{key}` must use a relative path.")
 
-    fixture_root = base_dir.resolve()
-    resolved_path = (fixture_root / path).resolve()
+    fixture_root = _fixture_root(base_dir)
+    resolved_path = (base_dir.resolve() / path).resolve()
     if not resolved_path.is_relative_to(fixture_root):
         raise TemplateToolError(f"Project reference `{key}` must stay within {fixture_root}.")
     return resolved_path

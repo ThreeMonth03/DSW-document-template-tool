@@ -144,6 +144,36 @@ def test_project_ref_can_create_project_from_events(tmp_path: Path) -> None:
     assert client.applied_events == [(resolved.project_uuid, events)]
 
 
+def test_project_ref_can_use_sibling_knowledge_model_fixture(tmp_path: Path) -> None:
+    """Project fixtures may reference KM bundles within the shared fixtures root."""
+
+    fixture_root = tmp_path / "fixtures"
+    project_dir = fixture_root / "projects" / "demo"
+    km_file = fixture_root / "knowledge-models" / "root.km"
+    project_dir.mkdir(parents=True)
+    km_file.parent.mkdir(parents=True)
+    km_file.write_text("{}", encoding="utf-8")
+    project_ref = project_dir / "project.json"
+    project_ref.write_text(
+        json.dumps(
+            {
+                "knowledge_model_package_id": "../../knowledge-models/root.km",
+            }
+        ),
+        encoding="utf-8",
+    )
+    client = FakeDSWClient()
+
+    resolved = _resolve_or_create_project(
+        client=client,
+        project_uuid=None,
+        project_ref=project_ref,
+    )
+
+    assert resolved.created_by_tool is True
+    assert client.created_projects[0]["knowledge_model_package_id"] == str(km_file.resolve())
+
+
 @pytest.mark.parametrize(
     "bundle_reference",
     [
