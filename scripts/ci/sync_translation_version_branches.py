@@ -680,13 +680,31 @@ def sync_public_readme_from_control_branch(
 ) -> None:
     """Copy the canonical public template README into an active version branch."""
 
-    source = repo / config.public_readme.path
+    relative_path = config.public_readme.path
+    source = repo / relative_path
+    if _contains_symlink(repo, relative_path):
+        raise ValueError(f"Refusing to copy public README through symlink: {source}")
     if not source.is_file():
         return
 
-    target = checkout / config.public_readme.path
+    target = checkout / relative_path
+    if _contains_symlink(checkout, relative_path.parent):
+        raise ValueError(f"Refusing to copy public README through symlink: {target.parent}")
     target.parent.mkdir(parents=True, exist_ok=True)
+    if target.is_symlink():
+        target.unlink()
     shutil.copy2(source, target)
+
+
+def _contains_symlink(root: Path, relative_path: Path) -> bool:
+    """Return whether an existing component below ``root`` is a symlink."""
+
+    current = root
+    for part in relative_path.parts:
+        current /= part
+        if current.is_symlink():
+            return True
+    return False
 
 
 def finalize_version_branch_workspace(

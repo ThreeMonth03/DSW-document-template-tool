@@ -8,10 +8,14 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import pytest
 import yaml
+
+
+def _public_readme_config(path: Path) -> SimpleNamespace:
+    return SimpleNamespace(public_readme=SimpleNamespace(path=path))
 
 
 def test_replace_tree_rejects_symlinks_without_modifying_destination(
@@ -35,6 +39,67 @@ def test_replace_tree_rejects_symlinks_without_modifying_destination(
 
     assert (destination / "existing.txt").read_text(encoding="utf-8") == "preserved\n"
     assert not (destination / "leaked-secret.txt").exists()
+
+
+def test_public_readme_sync_replaces_destination_symlink(
+    repo_root: Path,
+    tmp_path: Path,
+) -> None:
+    """A branch-controlled README link must not overwrite its target."""
+
+    sync_module = _load_sync_module(repo_root)
+    repo = tmp_path / "repo"
+    checkout = tmp_path / "checkout"
+    relative_path = Path("public/README.md")
+    source = repo / relative_path
+    target = checkout / relative_path
+    victim = tmp_path / "runner-file"
+    source.parent.mkdir(parents=True)
+    target.parent.mkdir(parents=True)
+    source.write_text("canonical README\n", encoding="utf-8")
+    victim.write_text("runner data\n", encoding="utf-8")
+    target.symlink_to(victim)
+
+    config = _public_readme_config(relative_path)
+    sync_module.sync_public_readme_from_control_branch(checkout=checkout, repo=repo, config=config)
+
+    assert not target.is_symlink()
+    assert target.read_text(encoding="utf-8") == "canonical README\n"
+    assert victim.read_text(encoding="utf-8") == "runner data\n"
+
+
+def test_public_readme_sync_rejects_source_and_parent_symlinks(
+    repo_root: Path,
+    tmp_path: Path,
+) -> None:
+    """README synchronization must not traverse links in either worktree."""
+
+    sync_module = _load_sync_module(repo_root)
+    repo = tmp_path / "repo"
+    checkout = tmp_path / "checkout"
+    outside = tmp_path / "outside"
+    relative_path = Path("public/README.md")
+    outside.mkdir()
+    (outside / "README.md").write_text("outside\n", encoding="utf-8")
+    repo.mkdir()
+    checkout.mkdir()
+    (repo / "public").symlink_to(outside, target_is_directory=True)
+    config = _public_readme_config(relative_path)
+
+    with pytest.raises(ValueError, match="through symlink"):
+        sync_module.sync_public_readme_from_control_branch(
+            checkout=checkout, repo=repo, config=config
+        )
+
+    (repo / "public").unlink()
+    (repo / "public").mkdir()
+    (repo / relative_path).write_text("canonical\n", encoding="utf-8")
+    (checkout / "public").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="through symlink"):
+        sync_module.sync_public_readme_from_control_branch(
+            checkout=checkout, repo=repo, config=config
+        )
 
 
 def test_sync_translation_versions_creates_new_branch_from_clean_artifact(
