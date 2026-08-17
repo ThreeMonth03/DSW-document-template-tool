@@ -118,6 +118,16 @@ def test_headless_render_regression_workflow(repo_root: Path) -> None:
     artifact_step = next(
         step for step in render_steps if step["name"] == "Build clean upstream version artifacts"
     )
+    assert "github.event.inputs.upstream_template_artifact_refs" not in artifact_step["run"]
+    assert (
+        artifact_step["env"]["UPSTREAM_TEMPLATE_ARTIFACT_REFS"]
+        == "${{ github.event.inputs.upstream_template_artifact_refs || "
+        "matrix.upstream_template_artifact_refs }}"
+    )
+    assert (
+        'UPSTREAM_TEMPLATE_ARTIFACT_REFS="$UPSTREAM_TEMPLATE_ARTIFACT_REFS"'
+        in artifact_step["run"]
+    )
     assert "matrix.metamodel_version" not in artifact_step["run"]
     assert artifact_step["env"]["UPSTREAM_TEMPLATE_ARTIFACT_METAMODEL_VERSION"] == (
         "${{ matrix.metamodel_version }}"

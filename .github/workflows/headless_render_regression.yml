@@ -132,11 +132,12 @@ jobs:
 
       - name: Build clean upstream version artifacts
         env:
+          UPSTREAM_TEMPLATE_ARTIFACT_REFS: ${{ github.event.inputs.upstream_template_artifact_refs || matrix.upstream_template_artifact_refs }}
           UPSTREAM_TEMPLATE_ARTIFACT_METAMODEL_VERSION: ${{ matrix.metamodel_version }}
         run: |
           make build-upstream-artifacts \
             UPSTREAM_TEMPLATE_REPOSITORY="$UPSTREAM_TEMPLATE_REPOSITORY" \
-            UPSTREAM_TEMPLATE_ARTIFACT_REFS="${{ github.event.inputs.upstream_template_artifact_refs || matrix.upstream_template_artifact_refs }}" \
+            UPSTREAM_TEMPLATE_ARTIFACT_REFS="$UPSTREAM_TEMPLATE_ARTIFACT_REFS" \
             UPSTREAM_TEMPLATE_ARTIFACT_METAMODEL_VERSION="$UPSTREAM_TEMPLATE_ARTIFACT_METAMODEL_VERSION"
 
       - name: Generate expanded compatibility ledger
