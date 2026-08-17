@@ -880,6 +880,79 @@ def test_merge_translation_tree_recovers_from_broken_old_manifest(
     assert _find_translation_doc(output_tree_dir, "Fresh sentence.").is_file()
 
 
+@pytest.mark.parametrize("malicious_path_kind", ["traversal", "absolute", "symlink"])
+def test_merge_translation_tree_rejects_document_paths_outside_output_tree(
+    tmp_path: Path,
+    malicious_path_kind: str,
+) -> None:
+    """Manifest paths must not redirect translation writes outside the output tree."""
+
+    compact_dir = _write_compact_template(tmp_path, "<p>Hello.</p>\n")
+    expanded_dir = tmp_path / "expanded"
+    old_tree_dir = tmp_path / "old-tree"
+    new_tree_dir = tmp_path / "new-tree"
+    output_tree_dir = new_tree_dir
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=old_tree_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=new_tree_dir)
+    _write_translation_block(_find_translation_doc(old_tree_dir, "Hello."), "你好。")
+
+    victim_path = tmp_path / "victim.md"
+    source_document = _find_translation_doc(new_tree_dir, "Hello.")
+    shutil.copyfile(source_document, victim_path)
+    manifest_path = new_tree_dir / ".translation-tree" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if malicious_path_kind == "traversal":
+        malicious_path = "../victim.md"
+    elif malicious_path_kind == "absolute":
+        malicious_path = str(victim_path)
+    else:
+        symlink_path = new_tree_dir / "linked-victim.md"
+        symlink_path.symlink_to(victim_path)
+        malicious_path = symlink_path.name
+    manifest["units"][0]["document_path"] = malicious_path
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    original_victim = victim_path.read_text(encoding="utf-8")
+
+    with pytest.raises(TranslationTreeError, match="escapes tree directory"):
+        merge_translation_tree(
+            old_tree_dir=old_tree_dir,
+            new_tree_dir=new_tree_dir,
+            output_dir=output_tree_dir,
+            source_lang="en",
+            target_lang="zh_Hant",
+        )
+
+    assert victim_path.read_text(encoding="utf-8") == original_victim
+
+
+def test_merge_translation_tree_accepts_relative_tree_directories(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """Containment checks must resolve the tree root before comparison."""
+
+    compact_dir = _write_compact_template(tmp_path, "<p>Hello.</p>\n")
+    expanded_dir = tmp_path / "expanded"
+    old_tree_dir = tmp_path / "old-tree"
+    new_tree_dir = tmp_path / "new-tree"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=old_tree_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=new_tree_dir)
+    _write_translation_block(_find_translation_doc(old_tree_dir, "Hello."), "你好。")
+
+    monkeypatch.chdir(tmp_path)
+    merge_translation_tree(
+        old_tree_dir=Path("old-tree"),
+        new_tree_dir=Path("new-tree"),
+        output_dir=Path("new-tree"),
+        source_lang="en",
+        target_lang="zh_Hant",
+    )
+
+    assert "你好。" in _find_translation_doc(new_tree_dir, "Hello.").read_text(encoding="utf-8")
+
+
 def test_export_translation_tree_splits_nested_wrapper_into_multiple_units(
     tmp_path: Path,
 ) -> None:
