@@ -184,7 +184,7 @@ def test_sync_translation_versions_creates_new_branch_from_clean_artifact(
         tdk_executable=Path(sys.executable).with_name("dsw-tdk"),
         push=False,
         dry_run=False,
-        sync_workflows=True,
+        sync_workflows=False,
     )
 
     assert result.previous_latest_version == "v1.30.1"
@@ -497,13 +497,13 @@ def test_sync_translation_versions_refreshes_existing_branch_from_clean_artifact
             "dsw-science-europe-zh-hant-1.30.1.zip"
         ),
     )
-    assert (
-        _git_show(
-            translation_repo,
-            "sync/v1.30.1:.github/workflows/document_template_translation_sync.yml",
-        )
-        == "existing version workflow\n"
+    refreshed_workflow = _git_show(
+        translation_repo,
+        "sync/v1.30.1:.github/workflows/document_template_translation_sync.yml",
     )
+    assert "sync/v1.30.1" in refreshed_workflow
+    assert "Audit translation blocks" in refreshed_workflow
+    assert "Translated output structure audit failed" in refreshed_workflow
     assert not _git_path_exists(
         translation_repo,
         "sync/v1.30.1:.github/workflows/weblate_translation_promote.yml",

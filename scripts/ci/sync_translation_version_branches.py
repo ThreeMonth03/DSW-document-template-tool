@@ -154,8 +154,8 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "--sync-workflows",
         action="store_true",
         help=(
-            "Also create or update version-branch GitHub workflow files. "
-            "This requires a token with GitHub Actions workflow scope."
+            "Deprecated compatibility flag. Version-branch security workflows "
+            "are always created or updated."
         ),
     )
     parser.add_argument(
@@ -219,6 +219,11 @@ def sync_translation_versions(
     policy_mode: str = "auto",
 ) -> SyncResult:
     """Update known versions and synchronize policy-enabled version branches."""
+
+    # Version branches are the translator-facing trust boundary. Keep accepting the
+    # legacy argument for API compatibility, but never allow callers to omit the
+    # workflow that audits translator-controlled content before packaging it.
+    sync_workflows = True
 
     config = load_translation_repository_config(config_path)
     existing_versions = tuple(config.template.supported_versions)
