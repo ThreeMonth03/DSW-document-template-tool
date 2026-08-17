@@ -125,8 +125,7 @@ def test_headless_render_regression_workflow(repo_root: Path) -> None:
         "matrix.upstream_template_artifact_refs }}"
     )
     assert (
-        'UPSTREAM_TEMPLATE_ARTIFACT_REFS="$UPSTREAM_TEMPLATE_ARTIFACT_REFS"'
-        in artifact_step["run"]
+        'UPSTREAM_TEMPLATE_ARTIFACT_REFS="$UPSTREAM_TEMPLATE_ARTIFACT_REFS"' in artifact_step["run"]
     )
     assert "matrix.metamodel_version" not in artifact_step["run"]
     assert artifact_step["env"]["UPSTREAM_TEMPLATE_ARTIFACT_METAMODEL_VERSION"] == (
