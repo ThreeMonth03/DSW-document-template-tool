@@ -6,12 +6,15 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from dsw_document_template_tool.models import DocumentTemplateReference
 from dsw_document_template_tool.render_project import (
     _load_project_events,
     _render_released_template_package,
     _resolve_or_create_project,
 )
+from dsw_document_template_tool.tdk import TemplateToolError
 
 
 class FakeDSWClient:
@@ -139,6 +142,61 @@ def test_project_ref_can_create_project_from_events(tmp_path: Path) -> None:
         }
     ]
     assert client.applied_events == [(resolved.project_uuid, events)]
+
+
+@pytest.mark.parametrize(
+    "bundle_reference",
+    [
+        "../secret.km",
+        "/tmp/secret.km",
+        "~/secret.km",
+        "../secret-token.txt",
+        "pyproject.toml",
+    ],
+)
+def test_project_ref_rejects_unsafe_bundle_paths(
+    tmp_path: Path, bundle_reference: str
+) -> None:
+    """Repository-controlled project refs must not read bundles outside their directory."""
+
+    project_ref = tmp_path / "fixtures" / "project.json"
+    project_ref.parent.mkdir()
+    project_ref.write_text(
+        json.dumps({"knowledge_model_package_id": bundle_reference}),
+        encoding="utf-8",
+    )
+    client = FakeDSWClient()
+
+    with pytest.raises(TemplateToolError):
+        _resolve_or_create_project(
+            client=client,
+            project_uuid=None,
+            project_ref=project_ref,
+        )
+
+    assert client.created_projects == []
+
+
+def test_project_ref_rejects_bundle_symlink_escape(tmp_path: Path) -> None:
+    """A bundle symlink must not bypass the fixture-directory boundary."""
+
+    secret = tmp_path / "secret.km"
+    secret.write_text("secret", encoding="utf-8")
+    fixture_dir = tmp_path / "fixtures"
+    fixture_dir.mkdir()
+    (fixture_dir / "bundle.km").symlink_to(secret)
+    project_ref = fixture_dir / "project.json"
+    project_ref.write_text(
+        json.dumps({"knowledge_model_package_id": "bundle.km"}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(TemplateToolError):
+        _resolve_or_create_project(
+            client=FakeDSWClient(),
+            project_uuid=None,
+            project_ref=project_ref,
+        )
 
 
 def test_project_events_loader_accepts_wrapped_events_payload(tmp_path: Path) -> None:
