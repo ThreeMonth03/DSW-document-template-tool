@@ -1451,6 +1451,51 @@ def test_upstream_template_artifacts_normalizes_remote_for_subcommands(
     assert seen["remote"] == "https://github.com/ds-wizard/science-europe-template.git"
 
 
+def test_upstream_template_artifacts_rejects_traversing_template_version(
+    repo_root: Path,
+    tmp_path: Path,
+) -> None:
+    """Untrusted template metadata must not become a filesystem path component."""
+
+    module = _load_script_module(
+        repo_root / "scripts" / "ci" / "upstream_template_artifacts.py",
+        "upstream_template_version_test",
+    )
+    (tmp_path / "template.json").write_text(
+        json.dumps({"version": "1.30.0/../../victim", "metamodelVersion": "18.0"}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit, match="Invalid template semantic version"):
+        module.template_version_and_metamodel(tmp_path)
+
+
+def test_upstream_template_artifact_cleanup_requires_resolved_containment(
+    repo_root: Path,
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """A lexical outputs prefix must not permit deleting a path outside outputs."""
+
+    module = _load_script_module(
+        repo_root / "scripts" / "ci" / "upstream_template_artifacts.py",
+        "upstream_template_cleanup_test",
+    )
+    victim = tmp_path / "victim"
+    victim.mkdir()
+    marker = victim / "marker.txt"
+    marker.write_text("keep", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(SystemExit, match="Refusing to clean unsafe path"):
+        module.clean_allowed_root(
+            Path("outputs/workspace/../../victim"),
+            allowed_prefixes=("outputs",),
+        )
+
+    assert marker.read_text(encoding="utf-8") == "keep"
+
+
 def test_upstream_artifact_previews_render_packaged_template(
     repo_root: Path,
     tmp_path: Path,

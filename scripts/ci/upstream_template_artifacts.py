@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -21,6 +22,13 @@ from cli_commands import (  # noqa: E402
     tool_command,
 )
 from resolve_upstream_refs import normalize_git_remote, resolve_refs  # noqa: E402
+
+SEMANTIC_VERSION_RE = re.compile(
+    r"^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)"
+    r"(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)"
+    r"(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?"
+    r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
+)
 
 
 def main() -> None:
@@ -378,12 +386,13 @@ def resolve_single_ref(repo: Path, requested_ref: str) -> str:
 
 
 def clean_allowed_root(path: Path, *, allowed_prefixes: tuple[str, ...]) -> None:
-    path_text = path.as_posix()
+    resolved_path = path.resolve()
+    allowed_roots = tuple(Path(prefix).resolve() for prefix in allowed_prefixes)
     if not any(
-        path_text == prefix or path_text.startswith(f"{prefix}/") for prefix in allowed_prefixes
+        resolved_path == root or resolved_path.is_relative_to(root) for root in allowed_roots
     ):
         raise SystemExit(f"Refusing to clean unsafe path {path}")
-    shutil.rmtree(path, ignore_errors=True)
+    shutil.rmtree(resolved_path, ignore_errors=True)
 
 
 def safe_ref_name(ref: str) -> str:
@@ -393,7 +402,10 @@ def safe_ref_name(ref: str) -> str:
 
 def template_version_and_metamodel(template_dir: Path) -> tuple[str, str]:
     payload = json.loads((template_dir / "template.json").read_text(encoding="utf-8"))
-    return str(payload["version"]), str(payload.get("metamodelVersion", ""))
+    version = str(payload["version"])
+    if not SEMANTIC_VERSION_RE.fullmatch(version):
+        raise SystemExit(f"Invalid template semantic version: {version!r}")
+    return version, str(payload.get("metamodelVersion", ""))
 
 
 def package_path_for_template_dir(template_dir: Path) -> Path:
