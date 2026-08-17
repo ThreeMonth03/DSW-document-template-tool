@@ -252,6 +252,17 @@ def _patched_template_payload(
 
 def _template_json_member(archive: zipfile.ZipFile) -> str:
     names = archive.namelist()
+    seen_names: set[str] = set()
+    duplicate_names: set[str] = set()
+    for name in names:
+        if name in seen_names:
+            duplicate_names.add(name)
+        else:
+            seen_names.add(name)
+    if duplicate_names:
+        raise TemplateToolError(
+            "Template package contains duplicate ZIP members: " + ", ".join(sorted(duplicate_names))
+        )
     if "template.json" in names:
         return "template.json"
     matches = [name for name in names if name.endswith("/template.json")]

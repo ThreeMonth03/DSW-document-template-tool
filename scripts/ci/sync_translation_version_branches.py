@@ -154,8 +154,8 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "--sync-workflows",
         action="store_true",
         help=(
-            "Also create or update version-branch GitHub workflow files. "
-            "This requires a token with GitHub Actions workflow scope."
+            "Deprecated compatibility flag. Version-branch security workflows "
+            "are always created or updated."
         ),
     )
     parser.add_argument(
@@ -219,6 +219,11 @@ def sync_translation_versions(
     policy_mode: str = "auto",
 ) -> SyncResult:
     """Update known versions and synchronize policy-enabled version branches."""
+
+    # Version branches are the translator-facing trust boundary. Keep accepting the
+    # legacy argument for API compatibility, but never allow callers to omit the
+    # workflow that audits translator-controlled content before packaging it.
+    sync_workflows = True
 
     config = load_translation_repository_config(config_path)
     existing_versions = tuple(config.template.supported_versions)
@@ -459,7 +464,7 @@ def refresh_version_branch(
         existing_translation_tree = checkout / paths.translation_tree_dir
         had_existing_translation_tree = existing_translation_tree.is_dir()
         if had_existing_translation_tree:
-            shutil.copytree(existing_translation_tree, preserved_tree)
+            replace_tree(existing_translation_tree, preserved_tree)
 
         prune_version_branch_workspace(
             checkout=checkout,
@@ -866,8 +871,20 @@ def remove_branch_local_demo_assets(checkout: Path) -> None:
     fixture happened to be committed there.
     """
 
+    checkout_root = checkout.resolve()
     for relative_dir in BRANCH_LOCAL_DEMO_ASSET_DIRS:
-        remove_path(checkout / relative_dir)
+        path = checkout / relative_dir
+        current = checkout
+        for part in relative_dir.parts:
+            current /= part
+            if current.is_symlink():
+                raise ValueError(f"Refusing to remove demo assets through symlink: {current}")
+
+        try:
+            path.resolve().relative_to(checkout_root)
+        except ValueError as exc:
+            raise ValueError(f"Refusing to remove demo assets outside checkout: {path}") from exc
+        remove_path(path)
 
 
 def remove_path(path: Path) -> None:

@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
     "beautifulsoup4>=4.12,<5",
+    "defusedxml>=0.7,<1",
     "dsw-tdk>=4,<5",
     "Jinja2>=3.1,<4",
     "PyYAML==6.0.3",

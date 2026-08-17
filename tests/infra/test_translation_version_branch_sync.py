@@ -102,6 +102,73 @@ def test_public_readme_sync_rejects_source_and_parent_symlinks(
         )
 
 
+def test_remove_branch_local_demo_assets_rejects_symlinked_ancestor(
+    repo_root: Path,
+    tmp_path: Path,
+) -> None:
+    """Cleanup must not follow branch-controlled links outside the checkout."""
+
+    sync_module = _load_sync_module(repo_root)
+    checkout = tmp_path / "checkout"
+    external_workspace = tmp_path / "external-workspace"
+    external_projects = external_workspace / "projects"
+    external_projects.mkdir(parents=True)
+    sentinel = external_projects / "keep.txt"
+    sentinel.write_text("runner data\n", encoding="utf-8")
+    checkout.mkdir()
+    (checkout / "workspace").symlink_to(external_workspace, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="through symlink"):
+        sync_module.remove_branch_local_demo_assets(checkout)
+
+    assert sentinel.read_text(encoding="utf-8") == "runner data\n"
+
+
+def test_refresh_version_branch_rejects_symlinked_translation_tree(
+    repo_root: Path,
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """Branch-controlled links must not copy runner-local directories."""
+
+    sync_module = _load_sync_module(repo_root)
+    runner_data = tmp_path / "runner-data"
+    runner_data.mkdir()
+    (runner_data / "secret.txt").write_text("runner secret\n", encoding="utf-8")
+
+    def fake_add_existing_branch_worktree(*, checkout: Path, **_: object) -> None:
+        translation_tree = checkout / "translation-tree"
+        translation_tree.parent.mkdir(parents=True)
+        translation_tree.symlink_to(runner_data, target_is_directory=True)
+
+    monkeypatch.setattr(
+        sync_module,
+        "add_existing_branch_worktree",
+        fake_add_existing_branch_worktree,
+    )
+    monkeypatch.setattr(
+        sync_module,
+        "version_paths",
+        lambda *_args, **_kwargs: SimpleNamespace(translation_tree_dir=Path("translation-tree")),
+    )
+
+    with pytest.raises(ValueError, match="containing symlink"):
+        sync_module.refresh_version_branch(
+            repo=tmp_path,
+            tooling_root=repo_root,
+            tdk_executable=Path("dsw-tdk"),
+            config=None,
+            version="v1.0.0",
+            branch="sync/v1.0.0",
+            clean_artifact_root=tmp_path / "artifacts",
+            temp_root=tmp_path / "temporary",
+            push=False,
+            sync_workflows=False,
+        )
+
+    assert not (tmp_path / "temporary/sync-v1.0.0-preserved-tree").exists()
+
+
 def test_sync_translation_versions_creates_new_branch_from_clean_artifact(
     repo_root: Path,
     tmp_path: Path,
@@ -184,7 +251,7 @@ def test_sync_translation_versions_creates_new_branch_from_clean_artifact(
         tdk_executable=Path(sys.executable).with_name("dsw-tdk"),
         push=False,
         dry_run=False,
-        sync_workflows=True,
+        sync_workflows=False,
     )
 
     assert result.previous_latest_version == "v1.30.1"
@@ -497,13 +564,13 @@ def test_sync_translation_versions_refreshes_existing_branch_from_clean_artifact
             "dsw-science-europe-zh-hant-1.30.1.zip"
         ),
     )
-    assert (
-        _git_show(
-            translation_repo,
-            "sync/v1.30.1:.github/workflows/document_template_translation_sync.yml",
-        )
-        == "existing version workflow\n"
+    refreshed_workflow = _git_show(
+        translation_repo,
+        "sync/v1.30.1:.github/workflows/document_template_translation_sync.yml",
     )
+    assert "sync/v1.30.1" in refreshed_workflow
+    assert "Audit translation blocks" in refreshed_workflow
+    assert "Translated output structure audit failed" in refreshed_workflow
     assert not _git_path_exists(
         translation_repo,
         "sync/v1.30.1:.github/workflows/weblate_translation_promote.yml",

@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from dsw_document_template_tool._translation_tree import xliff as xliff_module
 from dsw_document_template_tool._translation_tree.output_polish import (
     polish_zh_hant_template_text,
 )
@@ -202,6 +203,27 @@ def test_polish_zh_hant_template_text_collapses_silent_jinja_before_parenthesis(
     )
 
 
+def test_polish_zh_hant_template_text_scans_non_cjk_silent_tags_once(monkeypatch) -> None:
+    """A failed CJK lookahead must not repeatedly rescan the remaining tags."""
+
+    import dsw_document_template_tool._translation_tree.output_polish as output_polish
+
+    tag_count = 1_000
+    source = "。" + " {% if value %}" * tag_count + " A"
+    read_tag = output_polish._read_silent_jinja_tag
+    call_count = 0
+
+    def counting_read_tag(text: str, start: int) -> tuple[str, int] | None:
+        nonlocal call_count
+        call_count += 1
+        return read_tag(text, start)
+
+    monkeypatch.setattr(output_polish, "_read_silent_jinja_tag", counting_read_tag)
+
+    assert polish_zh_hant_template_text(source) == source
+    assert call_count < tag_count * 5
+
+
 def _write_compact_template_file(
     *,
     root_dir: Path,
@@ -387,6 +409,34 @@ def test_xliff_import_rejects_stale_source_hash(tmp_path: Path) -> None:
             source_lang="en",
             target_lang="zh_Hant",
         )
+
+
+def test_xliff_parser_rejects_entities(tmp_path: Path) -> None:
+    """XLIFF imports must reject entity declarations before expanding them."""
+
+    xliff_path = tmp_path / "entities.xlf"
+    xliff_path.write_text(
+        '<!DOCTYPE xliff [<!ENTITY payload "expanded">]>'
+        '<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2">'
+        "<file><body>&payload;</body></file></xliff>",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(TranslationTreeError, match="Unsafe XML"):
+        xliff_module._parse_xliff(xliff_path)
+
+
+def test_xliff_parser_rejects_oversized_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """XLIFF imports must bound input before constructing an XML tree."""
+
+    monkeypatch.setattr(xliff_module, "MAX_XLIFF_BYTES", 16)
+    xliff_path = tmp_path / "large.xlf"
+    xliff_path.write_bytes(b"<xliff>" + b" " * 16 + b"</xliff>")
+
+    with pytest.raises(TranslationTreeError, match="16-byte size limit"):
+        xliff_module._parse_xliff(xliff_path)
 
 
 def test_merge_translation_tree_reuses_exact_unit_key_matches(tmp_path: Path) -> None:
@@ -849,6 +899,79 @@ def test_merge_translation_tree_recovers_from_broken_old_manifest(
     assert report.migrated_units == 0
     assert report.untranslated_units == 1
     assert _find_translation_doc(output_tree_dir, "Fresh sentence.").is_file()
+
+
+@pytest.mark.parametrize("malicious_path_kind", ["traversal", "absolute", "symlink"])
+def test_merge_translation_tree_rejects_document_paths_outside_output_tree(
+    tmp_path: Path,
+    malicious_path_kind: str,
+) -> None:
+    """Manifest paths must not redirect translation writes outside the output tree."""
+
+    compact_dir = _write_compact_template(tmp_path, "<p>Hello.</p>\n")
+    expanded_dir = tmp_path / "expanded"
+    old_tree_dir = tmp_path / "old-tree"
+    new_tree_dir = tmp_path / "new-tree"
+    output_tree_dir = new_tree_dir
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=old_tree_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=new_tree_dir)
+    _write_translation_block(_find_translation_doc(old_tree_dir, "Hello."), "你好。")
+
+    victim_path = tmp_path / "victim.md"
+    source_document = _find_translation_doc(new_tree_dir, "Hello.")
+    shutil.copyfile(source_document, victim_path)
+    manifest_path = new_tree_dir / ".translation-tree" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if malicious_path_kind == "traversal":
+        malicious_path = "../victim.md"
+    elif malicious_path_kind == "absolute":
+        malicious_path = str(victim_path)
+    else:
+        symlink_path = new_tree_dir / "linked-victim.md"
+        symlink_path.symlink_to(victim_path)
+        malicious_path = symlink_path.name
+    manifest["units"][0]["document_path"] = malicious_path
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    original_victim = victim_path.read_text(encoding="utf-8")
+
+    with pytest.raises(TranslationTreeError, match="escapes tree directory"):
+        merge_translation_tree(
+            old_tree_dir=old_tree_dir,
+            new_tree_dir=new_tree_dir,
+            output_dir=output_tree_dir,
+            source_lang="en",
+            target_lang="zh_Hant",
+        )
+
+    assert victim_path.read_text(encoding="utf-8") == original_victim
+
+
+def test_merge_translation_tree_accepts_relative_tree_directories(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """Containment checks must resolve the tree root before comparison."""
+
+    compact_dir = _write_compact_template(tmp_path, "<p>Hello.</p>\n")
+    expanded_dir = tmp_path / "expanded"
+    old_tree_dir = tmp_path / "old-tree"
+    new_tree_dir = tmp_path / "new-tree"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=old_tree_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=new_tree_dir)
+    _write_translation_block(_find_translation_doc(old_tree_dir, "Hello."), "你好。")
+
+    monkeypatch.chdir(tmp_path)
+    merge_translation_tree(
+        old_tree_dir=Path("old-tree"),
+        new_tree_dir=Path("new-tree"),
+        output_dir=Path("new-tree"),
+        source_lang="en",
+        target_lang="zh_Hant",
+    )
+
+    assert "你好。" in _find_translation_doc(new_tree_dir, "Hello.").read_text(encoding="utf-8")
 
 
 def test_export_translation_tree_splits_nested_wrapper_into_multiple_units(
@@ -2359,6 +2482,35 @@ def test_translation_placeholder_validation_ignores_html_attribute_only_duplicat
         '為了 {{ usage }}，可透過 <a href="{{ pid }}" target="_blank">{{ pid }}</a> 取得。'
         in translated_text
     )
+
+
+def test_translation_placeholder_validation_rejects_ambiguous_attribute_filter(
+    tmp_path: Path,
+) -> None:
+    """Attribute filters must prevent unsafe shorthand materialization."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        '<p>Available at <a href="{{ url|urlencode }}">{{ url }}</a>.</p>\n',
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    document_path = next(tree_dir.rglob("translation.md"))
+    _write_translation_block(document_path, '<a href="{url}">translated link</a>')
+
+    issues = audit_translation_tree(source_dir=expanded_dir, tree_dir=tree_dir)
+    assert any(issue.code == "ambiguous-source-placeholder" for issue in issues)
+
+    with pytest.raises(TranslationTreeError, match=r"\{url\}"):
+        sync_translation_tree(
+            tree_dir=tree_dir,
+            source_dir=expanded_dir,
+            output_dir=tmp_path / "translated-expanded",
+        )
 
 
 def test_sync_translation_tree_preserves_distinct_href_placeholder(

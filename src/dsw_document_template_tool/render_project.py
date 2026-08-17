@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -260,8 +261,12 @@ def _write_rendered_document(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_bytes(document)
     info_path = output_path.with_suffix(output_path.suffix + ".json")
+    # Sidecars may be published as CI artifacts. Keep them useful for identifying
+    # the render kind and validating the payload without exposing DSW identifiers,
+    # instance URLs, or resolved local paths contained in the internal metadata.
+    public_metadata = {key: metadata[key] for key in ("mode", "bytes") if key in metadata}
     info_path.write_text(
-        json.dumps(metadata, indent=2, ensure_ascii=False) + "\n",
+        json.dumps(public_metadata, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
     print(f"INFO: Wrote render metadata to {info_path}")
@@ -375,19 +380,62 @@ def _optional_path(payload: dict[str, object], key: str, *, base_dir: Path) -> P
     value = _optional_str(payload, key)
     if value is None:
         return None
-    path = Path(value).expanduser()
-    if not path.is_absolute():
-        path = base_dir / path
+    path = _contained_fixture_path(value, base_dir=base_dir, key=key)
     if not path.is_file():
         raise TemplateToolError(f"Project reference points at missing `{key}` file: {path}")
-    return path.resolve()
+    return path
 
 
 def _resolve_path_value(value: str, *, base_dir: Path) -> str:
-    path = Path(value).expanduser()
-    if path.is_absolute():
-        return str(path) if path.is_file() else value
-    relative_path = base_dir / path
-    if relative_path.is_file():
-        return str(relative_path.resolve())
+    path = Path(value)
+    looks_like_path = path.suffix == ".km" or path.is_absolute() or value.startswith("~")
+    looks_like_path = looks_like_path or len(path.parts) > 1
+    if looks_like_path:
+        if path.suffix != ".km":
+            raise TemplateToolError(
+                "Local knowledge model package references must use a `.km` bundle."
+            )
+        bundle_path = _contained_fixture_path(
+            value,
+            base_dir=base_dir,
+            key="knowledge_model_package_id",
+        )
+        if not bundle_path.is_file():
+            raise TemplateToolError(
+                f"Project reference points at missing knowledge model bundle: {bundle_path}"
+            )
+        return str(bundle_path)
+    if value.count(":") == 2:
+        return value
+    try:
+        uuid.UUID(value)
+    except ValueError as exc:
+        raise TemplateToolError(
+            "Knowledge model package references must be a UUID, `org:km:version`, "
+            "or a relative `.km` bundle path."
+        ) from exc
     return value
+
+
+def _fixture_root(base_dir: Path) -> Path:
+    """Return the nearest repository fixture root, or the reference directory."""
+
+    resolved_base = base_dir.resolve()
+    for candidate in (resolved_base, *resolved_base.parents):
+        if candidate.name == "fixtures":
+            return candidate
+    return resolved_base
+
+
+def _contained_fixture_path(value: str, *, base_dir: Path, key: str) -> Path:
+    """Resolve a repository fixture without allowing filesystem traversal."""
+
+    path = Path(value)
+    if path.is_absolute() or value.startswith("~"):
+        raise TemplateToolError(f"Project reference `{key}` must use a relative path.")
+
+    fixture_root = _fixture_root(base_dir)
+    resolved_path = (base_dir.resolve() / path).resolve()
+    if not resolved_path.is_relative_to(fixture_root):
+        raise TemplateToolError(f"Project reference `{key}` must stay within {fixture_root}.")
+    return resolved_path
