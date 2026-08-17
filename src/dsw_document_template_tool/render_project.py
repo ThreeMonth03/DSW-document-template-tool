@@ -423,7 +423,5 @@ def _contained_fixture_path(value: str, *, base_dir: Path, key: str) -> Path:
     fixture_root = base_dir.resolve()
     resolved_path = (fixture_root / path).resolve()
     if not resolved_path.is_relative_to(fixture_root):
-        raise TemplateToolError(
-            f"Project reference `{key}` must stay within {fixture_root}."
-        )
+        raise TemplateToolError(f"Project reference `{key}` must stay within {fixture_root}.")
     return resolved_path

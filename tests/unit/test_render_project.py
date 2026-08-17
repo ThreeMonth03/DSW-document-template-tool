@@ -154,9 +154,7 @@ def test_project_ref_can_create_project_from_events(tmp_path: Path) -> None:
         "pyproject.toml",
     ],
 )
-def test_project_ref_rejects_unsafe_bundle_paths(
-    tmp_path: Path, bundle_reference: str
-) -> None:
+def test_project_ref_rejects_unsafe_bundle_paths(tmp_path: Path, bundle_reference: str) -> None:
     """Repository-controlled project refs must not read bundles outside their directory."""
 
     project_ref = tmp_path / "fixtures" / "project.json"
