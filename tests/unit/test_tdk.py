@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import warnings
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -138,3 +139,17 @@ def test_stage_local_template_package_streams_ordinary_assets(
                 assert asset.read() == b"asset" * 1000
     finally:
         shutil.rmtree(staged_package.parent, ignore_errors=True)
+def test_stage_local_template_package_rejects_duplicate_members(tmp_path: Path) -> None:
+    """Ambiguous ZIP members must not share a staged content-addressed ID."""
+
+    package_path = tmp_path / "template.zip"
+    _write_template_package(package_path)
+    with ZipFile(package_path, "a") as archive, warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        archive.writestr("template/assets/font.ttf", b"ambiguous font")
+
+    with pytest.raises(
+        TemplateToolError,
+        match=r"duplicate ZIP members: template/assets/font\.ttf",
+    ):
+        stage_local_template_package(source_package=package_path)
