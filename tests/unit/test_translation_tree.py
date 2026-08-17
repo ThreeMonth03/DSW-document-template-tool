@@ -2645,10 +2645,10 @@ def test_audit_translated_template_structure_allows_text_and_literal_translation
     )
 
 
-def test_audit_translated_template_structure_allows_registered_output_polish(
+def test_audit_translated_template_structure_reports_executable_output_polish(
     tmp_path: Path,
 ) -> None:
-    """Final zh-Hant punctuation polish should not fail structural audit."""
+    """Output polish must not hide changes to executable Jinja structure."""
 
     compact_dir = _write_compact_template(
         tmp_path,
@@ -2668,13 +2668,42 @@ def test_audit_translated_template_structure_allows_registered_output_polish(
         encoding="utf-8",
     )
 
-    assert (
-        audit_translated_template_structure(
-            source_dir=expanded_dir,
-            output_dir=translated_dir,
-        )
-        == []
+    issues = audit_translated_template_structure(
+        source_dir=expanded_dir,
+        output_dir=translated_dir,
     )
+
+    assert "changed-jinja-expression-structure" in {issue.code for issue in issues}
+
+
+def test_audit_translated_template_structure_reports_polished_link_delimiter(
+    tmp_path: Path,
+) -> None:
+    """Output polish must not hide changes to protected link attributes."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        '<a href="{{ protocol }}://example.com/path">Example</a>\n',
+    )
+    expanded_dir = tmp_path / "expanded"
+    translated_dir = tmp_path / "translated"
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    shutil.copytree(expanded_dir, translated_dir)
+
+    translated_file = translated_dir / "src" / "index.html.j2"
+    translated_file.write_text(
+        translated_file.read_text(encoding="utf-8").replace(
+            "{{ protocol }}:", "{{ protocol }}："
+        ),
+        encoding="utf-8",
+    )
+
+    issues = audit_translated_template_structure(
+        source_dir=expanded_dir,
+        output_dir=translated_dir,
+    )
+
+    assert "changed-html-structure" in {issue.code for issue in issues}
 
 
 def test_audit_translated_template_structure_reports_lost_link_attribute(
