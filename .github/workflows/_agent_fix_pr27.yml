@@ -1,0 +1,123 @@
+name: Fix PR 27 containment
+
+on:
+  push:
+    branches:
+      - codex/fix-path-traversal-vulnerability-in-merge
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: codex/fix-path-traversal-vulnerability-in-merge
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: make install-dev
+
+      - name: Fix containment, add regression, and remove helper
+        run: |
+          set -euo pipefail
+          .venv/bin/python - <<'PY'
+          from pathlib import Path
+
+          source_path = Path("src/dsw_document_template_tool/_translation_tree/merge.py")
+          source = source_path.read_text(encoding="utf-8")
+          old = '''    relative_document_path = Path(document_path_raw)
+              document_path = (tree_dir / relative_document_path).resolve()
+              if (
+                  relative_document_path.is_absolute()
+                  or ".." in relative_document_path.parts
+                  or not document_path.is_relative_to(tree_dir)
+              ):
+                  raise TranslationTreeError(
+                      f"Translation document path escapes tree directory: {document_path_raw}"
+                  )
+              if not document_path.is_file():
+                  raise TranslationTreeError(f"Missing translation document at {document_path}")
+              return TranslationCandidate(
+                  source_file=source_file,
+                  unit_key=unit_key,
+                  unit_source_hash=unit_source_hash,
+                  document_path=str(document_path.relative_to(tree_dir)),
+          '''
+          old = "\n".join(line[4:] if line.startswith("    ") else line for line in old.splitlines()) + "\n"
+          new = '''    tree_root = tree_dir.resolve()
+              relative_document_path = Path(document_path_raw)
+              document_path = (tree_root / relative_document_path).resolve()
+              if (
+                  relative_document_path.is_absolute()
+                  or ".." in relative_document_path.parts
+                  or not document_path.is_relative_to(tree_root)
+              ):
+                  raise TranslationTreeError(
+                      f"Translation document path escapes tree directory: {document_path_raw}"
+                  )
+              if not document_path.is_file():
+                  raise TranslationTreeError(f"Missing translation document at {document_path}")
+              return TranslationCandidate(
+                  source_file=source_file,
+                  unit_key=unit_key,
+                  unit_source_hash=unit_source_hash,
+                  document_path=str(document_path.relative_to(tree_root)),
+          '''
+          new = "\n".join(line[4:] if line.startswith("    ") else line for line in new.splitlines()) + "\n"
+          if old not in source:
+              raise SystemExit("PR 27 containment block changed")
+          source_path.write_text(source.replace(old, new, 1), encoding="utf-8")
+
+          test_path = Path("tests/unit/test_translation_tree.py")
+          tests = test_path.read_text(encoding="utf-8")
+          marker = "\n\ndef test_export_translation_tree_splits_nested_wrapper_into_multiple_units(\n"
+          if marker not in tests:
+              raise SystemExit("PR 27 test insertion point changed")
+          regression = '''
+
+          def test_merge_translation_tree_accepts_relative_tree_directories(
+              tmp_path: Path,
+              monkeypatch,
+          ) -> None:
+              """Containment checks must resolve the tree root before comparison."""
+
+              compact_dir = _write_compact_template(tmp_path, "<p>Hello.</p>\\n")
+              expanded_dir = tmp_path / "expanded"
+              old_tree_dir = tmp_path / "old-tree"
+              new_tree_dir = tmp_path / "new-tree"
+              expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+              export_translation_tree(source_dir=expanded_dir, output_dir=old_tree_dir)
+              export_translation_tree(source_dir=expanded_dir, output_dir=new_tree_dir)
+              _write_translation_block(_find_translation_doc(old_tree_dir, "Hello."), "你好。")
+
+              monkeypatch.chdir(tmp_path)
+              merge_translation_tree(
+                  old_tree_dir=Path("old-tree"),
+                  new_tree_dir=Path("new-tree"),
+                  output_dir=Path("new-tree"),
+                  source_lang="en",
+                  target_lang="zh_Hant",
+              )
+
+              assert "你好。" in _find_translation_doc(new_tree_dir, "Hello.").read_text(
+                  encoding="utf-8"
+              )
+          '''
+          regression = "\n".join(line[10:] if line.startswith("          ") else line for line in regression.splitlines())
+          test_path.write_text(tests.replace(marker, regression + marker, 1), encoding="utf-8")
+          PY
+          .venv/bin/python -m ruff format --config config/ruff.toml docs/conf.py scripts/ci/*.py src tests
+          rm -f .github/workflows/_agent_fix_pr27.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: resolve manifest tree roots before containment checks"
+          git push origin HEAD:codex/fix-path-traversal-vulnerability-in-merge
