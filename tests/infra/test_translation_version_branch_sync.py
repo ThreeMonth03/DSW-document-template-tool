@@ -62,9 +62,7 @@ def test_refresh_version_branch_rejects_symlinked_translation_tree(
     monkeypatch.setattr(
         sync_module,
         "version_paths",
-        lambda *_args, **_kwargs: SimpleNamespace(
-            translation_tree_dir=Path("translation-tree")
-        ),
+        lambda *_args, **_kwargs: SimpleNamespace(translation_tree_dir=Path("translation-tree")),
     )
 
     with pytest.raises(ValueError, match="containing symlink"):
