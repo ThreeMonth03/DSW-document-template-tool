@@ -344,7 +344,8 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
     assert "github.event_name == 'schedule'" not in workflow_text
     assert workflow["permissions"]["contents"] == "write"
     assert workflow["permissions"]["statuses"] == "write"
-    assert workflow["permissions"]["actions"] == "write"
+    assert "actions" not in workflow["permissions"]
+    assert "permissions" not in workflow["jobs"]["translation-sync"]
     assert "releases: write" not in workflow_text
     assert "github.actor != 'github-actions[bot]'" in workflow_text
     assert "github.event.pull_request.head.repo.full_name == github.repository" in workflow_text
@@ -477,18 +478,17 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
     assert "statuses/$REPAIRED_SHA" in workflow_text
     assert "Dispatch operations migration" in workflow_text
     assert "github.event_name == 'push' &&" in workflow_text
-    dispatch_step = next(
-        step
-        for step in workflow["jobs"]["translation-sync"]["steps"]
-        if step["name"] == "Dispatch operations migration"
-    )
-    assert dispatch_step["if"] == (
+    dispatch_job = workflow["jobs"]["dispatch-operations-migration"]
+    assert dispatch_job["needs"] == "translation-sync"
+    assert dispatch_job["permissions"] == {"actions": "write"}
+    assert dispatch_job["if"] == (
         "github.event_name == 'push' && "
         "!startsWith(github.event.head_commit.message, 'chore: refresh ') && "
         "!startsWith(github.event.head_commit.message, 'chore(sync): carry ') && "
         "!startsWith(github.event.head_commit.message, "
         "'chore(sync): refresh document template translations')"
     )
+    assert [step["name"] for step in dispatch_job["steps"]] == ["Dispatch operations migration"]
     assert "!startsWith(github.event.head_commit.message, 'chore: refresh ') &&" in workflow_text
     assert (
         "!startsWith(github.event.head_commit.message, 'chore(sync): carry ') &&"
