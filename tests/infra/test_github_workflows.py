@@ -172,15 +172,12 @@ def test_docs_pages_workflow(repo_root: Path) -> None:
     assert workflow["on"]["push"]["branches"] == ["master"]
     assert "workflow_dispatch" in workflow["on"]
     assert "pull_request" not in workflow["on"]
-    assert workflow["permissions"] == {
-        "contents": "read",
-        "id-token": "write",
-        "pages": "write",
-    }
+    assert "permissions" not in workflow
     assert workflow["concurrency"]["group"] == "github-pages"
 
     build_job = workflow["jobs"]["build"]
     assert build_job["runs-on"] == "ubuntu-latest"
+    assert build_job["permissions"] == {"contents": "read"}
     assert "actions/checkout@v5" in workflow_text
     assert 'python-version: "3.13"' in workflow_text
     assert "make install-dev BOOTSTRAP_PYTHON=python" in workflow_text
@@ -191,6 +188,11 @@ def test_docs_pages_workflow(repo_root: Path) -> None:
 
     deploy_job = workflow["jobs"]["deploy"]
     assert deploy_job["needs"] == "build"
+    assert deploy_job["if"] == "github.ref == 'refs/heads/master'"
+    assert deploy_job["permissions"] == {
+        "id-token": "write",
+        "pages": "write",
+    }
     assert "actions/deploy-pages@v5" in workflow_text
 
 
