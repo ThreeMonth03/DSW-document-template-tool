@@ -49,6 +49,7 @@ class SilentSpacingCollapse:
 
     silent_tags: list[str]
     next_index: int
+    remove_spacing: bool
 
 
 def _is_cjk(char: str) -> bool:
@@ -131,6 +132,10 @@ def _collapse_silent_jinja_leading_spacing_before_cjk(text: str) -> str:
                 last_visible_char=last_visible_char,
             )
             if collapse is not None:
+                if not collapse.remove_spacing:
+                    result.append(text[index : collapse.next_index])
+                    index = collapse.next_index
+                    continue
                 while result and result[-1].isspace():
                     result.pop()
                 result.extend(collapse.silent_tags)
@@ -173,11 +178,16 @@ def _silent_spacing_collapse_after_tag(
         next_tag_text, lookahead = next_silent_tag
         silent_tags.append(next_tag_text)
 
-    if lookahead <= tag_end or lookahead >= len(text):
-        return None
-    if not (_is_cjk(text[lookahead]) or text[lookahead] == "（"):
-        return None
-    return SilentSpacingCollapse(silent_tags=silent_tags, next_index=lookahead)
+    remove_spacing = (
+        lookahead > tag_end
+        and lookahead < len(text)
+        and (_is_cjk(text[lookahead]) or text[lookahead] == "（")
+    )
+    return SilentSpacingCollapse(
+        silent_tags=silent_tags,
+        next_index=lookahead,
+        remove_spacing=remove_spacing,
+    )
 
 
 def polish_translated_output_dir(*, output_dir: Path, target_lang: str) -> None:

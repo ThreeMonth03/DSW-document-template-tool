@@ -202,6 +202,27 @@ def test_polish_zh_hant_template_text_collapses_silent_jinja_before_parenthesis(
     )
 
 
+def test_polish_zh_hant_template_text_scans_non_cjk_silent_tags_once(monkeypatch) -> None:
+    """A failed CJK lookahead must not repeatedly rescan the remaining tags."""
+
+    import dsw_document_template_tool._translation_tree.output_polish as output_polish
+
+    tag_count = 1_000
+    source = "。" + " {% if value %}" * tag_count + " A"
+    read_tag = output_polish._read_silent_jinja_tag
+    call_count = 0
+
+    def counting_read_tag(text: str, start: int) -> tuple[str, int] | None:
+        nonlocal call_count
+        call_count += 1
+        return read_tag(text, start)
+
+    monkeypatch.setattr(output_polish, "_read_silent_jinja_tag", counting_read_tag)
+
+    assert polish_zh_hant_template_text(source) == source
+    assert call_count < tag_count * 5
+
+
 def _write_compact_template_file(
     *,
     root_dir: Path,
