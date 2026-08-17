@@ -464,7 +464,7 @@ def refresh_version_branch(
         existing_translation_tree = checkout / paths.translation_tree_dir
         had_existing_translation_tree = existing_translation_tree.is_dir()
         if had_existing_translation_tree:
-            shutil.copytree(existing_translation_tree, preserved_tree)
+            replace_tree(existing_translation_tree, preserved_tree)
 
         prune_version_branch_workspace(
             checkout=checkout,

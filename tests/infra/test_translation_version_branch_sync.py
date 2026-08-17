@@ -120,6 +120,49 @@ def test_remove_branch_local_demo_assets_rejects_symlinked_ancestor(
         sync_module.remove_branch_local_demo_assets(checkout)
 
     assert sentinel.read_text(encoding="utf-8") == "runner data\n"
+def test_refresh_version_branch_rejects_symlinked_translation_tree(
+    repo_root: Path,
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """Branch-controlled links must not copy runner-local directories."""
+
+    sync_module = _load_sync_module(repo_root)
+    runner_data = tmp_path / "runner-data"
+    runner_data.mkdir()
+    (runner_data / "secret.txt").write_text("runner secret\n", encoding="utf-8")
+
+    def fake_add_existing_branch_worktree(*, checkout: Path, **_: object) -> None:
+        translation_tree = checkout / "translation-tree"
+        translation_tree.parent.mkdir(parents=True)
+        translation_tree.symlink_to(runner_data, target_is_directory=True)
+
+    monkeypatch.setattr(
+        sync_module,
+        "add_existing_branch_worktree",
+        fake_add_existing_branch_worktree,
+    )
+    monkeypatch.setattr(
+        sync_module,
+        "version_paths",
+        lambda *_args, **_kwargs: SimpleNamespace(translation_tree_dir=Path("translation-tree")),
+    )
+
+    with pytest.raises(ValueError, match="containing symlink"):
+        sync_module.refresh_version_branch(
+            repo=tmp_path,
+            tooling_root=repo_root,
+            tdk_executable=Path("dsw-tdk"),
+            config=None,
+            version="v1.0.0",
+            branch="sync/v1.0.0",
+            clean_artifact_root=tmp_path / "artifacts",
+            temp_root=tmp_path / "temporary",
+            push=False,
+            sync_workflows=False,
+        )
+
+    assert not (tmp_path / "temporary/sync-v1.0.0-preserved-tree").exists()
 
 
 def test_sync_translation_versions_creates_new_branch_from_clean_artifact(
