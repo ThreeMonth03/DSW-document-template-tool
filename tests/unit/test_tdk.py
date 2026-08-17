@@ -101,7 +101,8 @@ def test_stage_local_template_package_uses_content_addressed_coordinates(
 
 
 def test_stage_local_template_package_rejects_excessive_expansion(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A package with excessive expansion must be rejected before inflation."""
 
@@ -118,7 +119,8 @@ def test_stage_local_template_package_rejects_excessive_expansion(
 
 
 def test_stage_local_template_package_streams_ordinary_assets(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Staging must not call ZipFile.read, which buffers a whole member."""
 

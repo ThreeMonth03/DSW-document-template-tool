@@ -311,9 +311,7 @@ def _read_template_json(
     with archive.open(info) as source:
         content = source.read(_MAX_TEMPLATE_JSON_SIZE + 1)
     if len(content) > _MAX_TEMPLATE_JSON_SIZE:
-        raise TemplateToolError(
-            f"template.json exceeds the {_MAX_TEMPLATE_JSON_SIZE}-byte limit"
-        )
+        raise TemplateToolError(f"template.json exceeds the {_MAX_TEMPLATE_JSON_SIZE}-byte limit")
     return content
 
 
