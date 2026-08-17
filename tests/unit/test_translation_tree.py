@@ -2361,6 +2361,35 @@ def test_translation_placeholder_validation_ignores_html_attribute_only_duplicat
     )
 
 
+def test_translation_placeholder_validation_rejects_ambiguous_attribute_filter(
+    tmp_path: Path,
+) -> None:
+    """Attribute filters must prevent unsafe shorthand materialization."""
+
+    compact_dir = _write_compact_template(
+        tmp_path,
+        '<p>Available at <a href="{{ url|urlencode }}">{{ url }}</a>.</p>\n',
+    )
+    expanded_dir = tmp_path / "expanded"
+    tree_dir = tmp_path / "translation-tree"
+
+    expand_template_dir(source_dir=compact_dir, output_dir=expanded_dir)
+    export_translation_tree(source_dir=expanded_dir, output_dir=tree_dir)
+
+    document_path = next(tree_dir.rglob("translation.md"))
+    _write_translation_block(document_path, '<a href="{url}">translated link</a>')
+
+    issues = audit_translation_tree(source_dir=expanded_dir, tree_dir=tree_dir)
+    assert any(issue.code == "ambiguous-source-placeholder" for issue in issues)
+
+    with pytest.raises(TranslationTreeError, match=r"\{url\}"):
+        sync_translation_tree(
+            tree_dir=tree_dir,
+            source_dir=expanded_dir,
+            output_dir=tmp_path / "translated-expanded",
+        )
+
+
 def test_sync_translation_tree_preserves_distinct_href_placeholder(
     tmp_path: Path,
 ) -> None:

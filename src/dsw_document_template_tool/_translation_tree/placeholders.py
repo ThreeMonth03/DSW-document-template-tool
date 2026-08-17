@@ -137,7 +137,11 @@ def build_source_placeholder_map(source_text: str) -> dict[str, str]:
     """Map translator placeholder names back to source Jinja expressions."""
 
     expressions_by_name: dict[str, set[str]] = {}
-    for match in JINJA_EXPR_PATTERN.finditer(visible_placeholder_source_text(source_text)):
+    # Attribute expressions must participate in ambiguity detection even though
+    # they are not translator-visible, required placeholders. Otherwise a
+    # visible ``{{ url }}`` can mask a safer ``{{ url|urlencode }}`` attribute
+    # expression and translator shorthand would materialize the unsafe variant.
+    for match in JINJA_EXPR_PATTERN.finditer(source_text):
         expression = " ".join(match.group("expr").strip().split())
         placeholder_names = extract_translator_placeholder_names(
             jinja_expr_to_placeholder(match.group("expr"))
