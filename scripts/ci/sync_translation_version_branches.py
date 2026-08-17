@@ -871,8 +871,20 @@ def remove_branch_local_demo_assets(checkout: Path) -> None:
     fixture happened to be committed there.
     """
 
+    checkout_root = checkout.resolve()
     for relative_dir in BRANCH_LOCAL_DEMO_ASSET_DIRS:
-        remove_path(checkout / relative_dir)
+        path = checkout / relative_dir
+        current = checkout
+        for part in relative_dir.parts:
+            current /= part
+            if current.is_symlink():
+                raise ValueError(f"Refusing to remove demo assets through symlink: {current}")
+
+        try:
+            path.resolve().relative_to(checkout_root)
+        except ValueError as exc:
+            raise ValueError(f"Refusing to remove demo assets outside checkout: {path}") from exc
+        remove_path(path)
 
 
 def remove_path(path: Path) -> None:

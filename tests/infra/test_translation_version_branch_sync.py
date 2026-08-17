@@ -100,6 +100,26 @@ def test_public_readme_sync_rejects_source_and_parent_symlinks(
         sync_module.sync_public_readme_from_control_branch(
             checkout=checkout, repo=repo, config=config
         )
+def test_remove_branch_local_demo_assets_rejects_symlinked_ancestor(
+    repo_root: Path,
+    tmp_path: Path,
+) -> None:
+    """Cleanup must not follow branch-controlled links outside the checkout."""
+
+    sync_module = _load_sync_module(repo_root)
+    checkout = tmp_path / "checkout"
+    external_workspace = tmp_path / "external-workspace"
+    external_projects = external_workspace / "projects"
+    external_projects.mkdir(parents=True)
+    sentinel = external_projects / "keep.txt"
+    sentinel.write_text("runner data\n", encoding="utf-8")
+    checkout.mkdir()
+    (checkout / "workspace").symlink_to(external_workspace, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="through symlink"):
+        sync_module.remove_branch_local_demo_assets(checkout)
+
+    assert sentinel.read_text(encoding="utf-8") == "runner data\n"
 
 
 def test_sync_translation_versions_creates_new_branch_from_clean_artifact(
