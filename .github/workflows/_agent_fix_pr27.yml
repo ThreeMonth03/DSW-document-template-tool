@@ -33,48 +33,35 @@ jobs:
 
           source_path = Path("src/dsw_document_template_tool/_translation_tree/merge.py")
           source = source_path.read_text(encoding="utf-8")
-          old = '''    relative_document_path = Path(document_path_raw)
-              document_path = (tree_dir / relative_document_path).resolve()
-              if (
-                  relative_document_path.is_absolute()
-                  or ".." in relative_document_path.parts
-                  or not document_path.is_relative_to(tree_dir)
-              ):
-                  raise TranslationTreeError(
-                      f"Translation document path escapes tree directory: {document_path_raw}"
-                  )
-              if not document_path.is_file():
-                  raise TranslationTreeError(f"Missing translation document at {document_path}")
-              return TranslationCandidate(
-                  source_file=source_file,
-                  unit_key=unit_key,
-                  unit_source_hash=unit_source_hash,
-                  document_path=str(document_path.relative_to(tree_dir)),
-          '''
-          old = "\n".join(line[4:] if line.startswith("    ") else line for line in old.splitlines()) + "\n"
-          new = '''    tree_root = tree_dir.resolve()
-              relative_document_path = Path(document_path_raw)
-              document_path = (tree_root / relative_document_path).resolve()
-              if (
-                  relative_document_path.is_absolute()
-                  or ".." in relative_document_path.parts
-                  or not document_path.is_relative_to(tree_root)
-              ):
-                  raise TranslationTreeError(
-                      f"Translation document path escapes tree directory: {document_path_raw}"
-                  )
-              if not document_path.is_file():
-                  raise TranslationTreeError(f"Missing translation document at {document_path}")
-              return TranslationCandidate(
-                  source_file=source_file,
-                  unit_key=unit_key,
-                  unit_source_hash=unit_source_hash,
-                  document_path=str(document_path.relative_to(tree_root)),
-          '''
-          new = "\n".join(line[4:] if line.startswith("    ") else line for line in new.splitlines()) + "\n"
-          if old not in source:
-              raise SystemExit("PR 27 containment block changed")
-          source_path.write_text(source.replace(old, new, 1), encoding="utf-8")
+          prefix = (
+              "    relative_document_path = Path(document_path_raw)\n"
+              "    document_path = (tree_dir / relative_document_path).resolve()\n"
+          )
+          replacement = (
+              "    tree_root = tree_dir.resolve()\n"
+              "    relative_document_path = Path(document_path_raw)\n"
+              "    document_path = (tree_root / relative_document_path).resolve()\n"
+          )
+          if source.count(prefix) != 1:
+              raise SystemExit("PR 27 path prefix changed")
+          source = source.replace(prefix, replacement, 1)
+          containment = "        or not document_path.is_relative_to(tree_dir)"
+          if source.count(containment) != 1:
+              raise SystemExit("PR 27 containment expression changed")
+          source = source.replace(
+              containment,
+              "        or not document_path.is_relative_to(tree_root)",
+              1,
+          )
+          relative = "document_path=str(document_path.relative_to(tree_dir)),"
+          if source.count(relative) != 1:
+              raise SystemExit("PR 27 relative path expression changed")
+          source = source.replace(
+              relative,
+              "document_path=str(document_path.relative_to(tree_root)),",
+              1,
+          )
+          source_path.write_text(source, encoding="utf-8")
 
           test_path = Path("tests/unit/test_translation_tree.py")
           tests = test_path.read_text(encoding="utf-8")
@@ -111,7 +98,10 @@ jobs:
                   encoding="utf-8"
               )
           '''
-          regression = "\n".join(line[10:] if line.startswith("          ") else line for line in regression.splitlines())
+          regression = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in regression.splitlines()
+          )
           test_path.write_text(tests.replace(marker, regression + marker, 1), encoding="utf-8")
           PY
           .venv/bin/python -m ruff format --config config/ruff.toml docs/conf.py scripts/ci/*.py src tests
