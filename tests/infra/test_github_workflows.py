@@ -477,9 +477,7 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
         "!startsWith(github.event.head_commit.message, "
         "'chore(sync): refresh document template translations')"
     )
-    assert [step["name"] for step in dispatch_job["steps"]] == [
-        "Dispatch operations migration"
-    ]
+    assert [step["name"] for step in dispatch_job["steps"]] == ["Dispatch operations migration"]
     assert "!startsWith(github.event.head_commit.message, 'chore: refresh ') &&" in workflow_text
     assert (
         "!startsWith(github.event.head_commit.message, 'chore(sync): carry ') &&"
