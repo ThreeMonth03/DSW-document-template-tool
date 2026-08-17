@@ -1,0 +1,133 @@
+name: Fix PR 32 fixture boundary
+
+on:
+  push:
+    branches:
+      - codex/fix-arbitrary-file-upload-vulnerability
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: codex/fix-arbitrary-file-upload-vulnerability
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: make install-dev
+
+      - name: Preserve fixture-root compatibility and remove helper
+        run: |
+          set -euo pipefail
+          .venv/bin/python - <<'PY'
+          from pathlib import Path
+
+          source_path = Path("src/dsw_document_template_tool/render_project.py")
+          source = source_path.read_text(encoding="utf-8")
+          old = '''def _contained_fixture_path(value: str, *, base_dir: Path, key: str) -> Path:
+              """Resolve a repository fixture without allowing filesystem traversal."""
+
+              path = Path(value)
+              if path.is_absolute() or value.startswith("~"):
+                  raise TemplateToolError(f"Project reference `{key}` must use a relative path.")
+
+              fixture_root = base_dir.resolve()
+              resolved_path = (fixture_root / path).resolve()
+              if not resolved_path.is_relative_to(fixture_root):
+                  raise TemplateToolError(f"Project reference `{key}` must stay within {fixture_root}.")
+              return resolved_path
+          '''
+          old = "\n".join(line[14:] if line.startswith("              ") else line for line in old.splitlines()) + "\n"
+          new = '''def _fixture_root(base_dir: Path) -> Path:
+              """Return the nearest repository fixture root, or the reference directory."""
+
+              resolved_base = base_dir.resolve()
+              for candidate in (resolved_base, *resolved_base.parents):
+                  if candidate.name == "fixtures":
+                      return candidate
+              return resolved_base
+
+
+          def _contained_fixture_path(value: str, *, base_dir: Path, key: str) -> Path:
+              """Resolve a repository fixture without allowing filesystem traversal."""
+
+              path = Path(value)
+              if path.is_absolute() or value.startswith("~"):
+                  raise TemplateToolError(f"Project reference `{key}` must use a relative path.")
+
+              fixture_root = _fixture_root(base_dir)
+              resolved_path = (base_dir.resolve() / path).resolve()
+              if not resolved_path.is_relative_to(fixture_root):
+                  raise TemplateToolError(f"Project reference `{key}` must stay within {fixture_root}.")
+              return resolved_path
+          '''
+          new = "\n".join(line[14:] if line.startswith("              ") else line for line in new.splitlines()) + "\n"
+          if old not in source:
+              raise SystemExit("PR 32 fixture containment block changed")
+          source_path.write_text(source.replace(old, new, 1), encoding="utf-8")
+
+          test_path = Path("tests/unit/test_render_project.py")
+          tests = test_path.read_text(encoding="utf-8")
+          marker = "\n\n@pytest.mark.parametrize(\n"
+          if marker not in tests:
+              raise SystemExit("PR 32 test insertion point changed")
+          regression = '''
+
+          def test_project_ref_can_use_sibling_knowledge_model_fixture(tmp_path: Path) -> None:
+              """Project fixtures may reference KM bundles within the shared fixtures root."""
+
+              fixture_root = tmp_path / "fixtures"
+              project_dir = fixture_root / "projects" / "demo"
+              km_file = fixture_root / "knowledge-models" / "root.km"
+              project_dir.mkdir(parents=True)
+              km_file.parent.mkdir(parents=True)
+              km_file.write_text("{}", encoding="utf-8")
+              project_ref = project_dir / "project.json"
+              project_ref.write_text(
+                  json.dumps(
+                      {
+                          "knowledge_model_package_id": "../../knowledge-models/root.km",
+                      }
+                  ),
+                  encoding="utf-8",
+              )
+              client = FakeDSWClient()
+
+              resolved = _resolve_or_create_project(
+                  client=client,
+                  project_uuid=None,
+                  project_ref=project_ref,
+              )
+
+              assert resolved.created_by_tool is True
+              assert client.created_projects[0]["knowledge_model_package_id"] == str(
+                  km_file.resolve()
+              )
+          '''
+          regression = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in regression.splitlines()
+          )
+          test_path.write_text(tests.replace(marker, regression + marker, 1), encoding="utf-8")
+          PY
+          .venv/bin/python -m ruff check --fix --config config/ruff.toml \
+            src/dsw_document_template_tool/render_project.py \
+            tests/unit/test_render_project.py
+          .venv/bin/python -m ruff format --config config/ruff.toml \
+            src/dsw_document_template_tool/render_project.py \
+            tests/unit/test_render_project.py
+          rm -f .github/workflows/_agent_fix_pr32.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: confine project fixtures to the shared fixture root"
+          git push origin HEAD:codex/fix-arbitrary-file-upload-vulnerability
