@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+
+from defusedxml import ElementTree as DefusedET
+from defusedxml.common import DefusedXmlException
 
 from .document import (
     parse_sentence_text,
@@ -17,6 +21,9 @@ from .outline import refresh_outline_markdown
 
 XLIFF_NS = "urn:oasis:names:tc:xliff:document:1.2"
 XML_NS = "http://www.w3.org/XML/1998/namespace"
+MAX_XLIFF_BYTES = 32 * 1024 * 1024
+MAX_XLIFF_UNITS = 100_000
+MAX_XLIFF_TEXT_BYTES = 1024 * 1024
 
 ET.register_namespace("", XLIFF_NS)
 
@@ -125,8 +132,7 @@ def import_xliff(
         for unit in _manifest_units(manifest, tree_dir=tree_dir)
     }
 
-    tree = ET.parse(xliff_path)
-    root = tree.getroot()
+    root = _parse_xliff(xliff_path)
     _validate_file_languages(
         root=root,
         xliff_path=xliff_path,
@@ -137,6 +143,10 @@ def import_xliff(
     seen_ids: set[str] = set()
     imported_units = 0
     for trans_unit in _iter_children(root, "trans-unit"):
+        if imported_units >= MAX_XLIFF_UNITS:
+            raise TranslationTreeError(
+                f"XLIFF file exceeds the limit of {MAX_XLIFF_UNITS} units: {xliff_path}"
+            )
         unit_id = trans_unit.attrib.get("id")
         if not unit_id:
             raise TranslationTreeError(f"XLIFF trans-unit is missing id in {xliff_path}")
@@ -218,8 +228,23 @@ def _local_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
-def _iter_children(root: ET.Element, local_name: str) -> list[ET.Element]:
-    return [element for element in root.iter() if _local_name(element.tag) == local_name]
+def _parse_xliff(xliff_path: Path) -> ET.Element:
+    with xliff_path.open("rb") as xliff_file:
+        payload = xliff_file.read(MAX_XLIFF_BYTES + 1)
+    if len(payload) > MAX_XLIFF_BYTES:
+        raise TranslationTreeError(
+            f"XLIFF file exceeds the {MAX_XLIFF_BYTES}-byte size limit: {xliff_path}"
+        )
+    try:
+        return DefusedET.fromstring(payload)
+    except DefusedXmlException as error:
+        raise TranslationTreeError(f"Unsafe XML in XLIFF file {xliff_path}: {error}") from error
+    except ET.ParseError as error:
+        raise TranslationTreeError(f"Invalid XML in XLIFF file {xliff_path}: {error}") from error
+
+
+def _iter_children(root: ET.Element, local_name: str) -> Iterator[ET.Element]:
+    return (element for element in root.iter() if _local_name(element.tag) == local_name)
 
 
 def _validate_file_languages(
@@ -229,10 +254,9 @@ def _validate_file_languages(
     source_lang: str,
     target_lang: str,
 ) -> None:
-    file_elements = _iter_children(root, "file")
-    if not file_elements:
+    file_element = next(_iter_children(root, "file"), None)
+    if file_element is None:
         raise TranslationTreeError(f"XLIFF file has no file element: {xliff_path}")
-    file_element = file_elements[0]
     actual_source_lang = file_element.attrib.get("source-language")
     actual_target_lang = file_element.attrib.get("target-language")
     if actual_source_lang != source_lang or actual_target_lang != target_lang:
@@ -272,4 +296,10 @@ def _optional_child_text(trans_unit: ET.Element, local_name: str, *, unit_id: st
             f"XLIFF unit {unit_id} contains nested XML inside {local_name}; "
             "use escaped text instead."
         )
-    return element.text or ""
+    text = element.text or ""
+    if len(text.encode("utf-8")) > MAX_XLIFF_TEXT_BYTES:
+        raise TranslationTreeError(
+            f"XLIFF unit {unit_id} {local_name} text exceeds the "
+            f"{MAX_XLIFF_TEXT_BYTES}-byte size limit"
+        )
+    return text

@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from dsw_document_template_tool._translation_tree import xliff as xliff_module
 from dsw_document_template_tool._translation_tree.output_polish import (
     polish_zh_hant_template_text,
 )
@@ -387,6 +388,34 @@ def test_xliff_import_rejects_stale_source_hash(tmp_path: Path) -> None:
             source_lang="en",
             target_lang="zh_Hant",
         )
+
+
+def test_xliff_parser_rejects_entities(tmp_path: Path) -> None:
+    """XLIFF imports must reject entity declarations before expanding them."""
+
+    xliff_path = tmp_path / "entities.xlf"
+    xliff_path.write_text(
+        '<!DOCTYPE xliff [<!ENTITY payload "expanded">]>'
+        '<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2">'
+        "<file><body>&payload;</body></file></xliff>",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(TranslationTreeError, match="Unsafe XML"):
+        xliff_module._parse_xliff(xliff_path)
+
+
+def test_xliff_parser_rejects_oversized_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """XLIFF imports must bound input before constructing an XML tree."""
+
+    monkeypatch.setattr(xliff_module, "MAX_XLIFF_BYTES", 16)
+    xliff_path = tmp_path / "large.xlf"
+    xliff_path.write_bytes(b"<xliff>" + b" " * 16 + b"</xliff>")
+
+    with pytest.raises(TranslationTreeError, match="16-byte size limit"):
+        xliff_module._parse_xliff(xliff_path)
 
 
 def test_merge_translation_tree_reuses_exact_unit_key_matches(tmp_path: Path) -> None:
