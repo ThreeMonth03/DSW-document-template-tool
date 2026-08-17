@@ -11,8 +11,8 @@ import pytest
 
 from dsw_document_template_tool import tdk
 from dsw_document_template_tool.tdk import (
-    read_local_template_package_coordinates,
     TemplateToolError,
+    read_local_template_package_coordinates,
     stage_local_template_package,
 )
 

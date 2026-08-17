@@ -13,7 +13,6 @@ from typing import Protocol
 
 from .models import TemplateCoordinates
 
-
 _MAX_TEMPLATE_JSON_SIZE = 16 * 1024 * 1024
 _MAX_PACKAGE_UNCOMPRESSED_SIZE = 128 * 1024 * 1024
 _COPY_BUFFER_SIZE = 1024 * 1024
