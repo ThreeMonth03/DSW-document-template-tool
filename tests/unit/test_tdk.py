@@ -139,6 +139,8 @@ def test_stage_local_template_package_streams_ordinary_assets(
                 assert asset.read() == b"asset" * 1000
     finally:
         shutil.rmtree(staged_package.parent, ignore_errors=True)
+
+
 def test_stage_local_template_package_rejects_duplicate_members(tmp_path: Path) -> None:
     """Ambiguous ZIP members must not share a staged content-addressed ID."""
 

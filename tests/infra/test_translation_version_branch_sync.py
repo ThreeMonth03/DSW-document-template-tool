@@ -100,6 +100,8 @@ def test_public_readme_sync_rejects_source_and_parent_symlinks(
         sync_module.sync_public_readme_from_control_branch(
             checkout=checkout, repo=repo, config=config
         )
+
+
 def test_remove_branch_local_demo_assets_rejects_symlinked_ancestor(
     repo_root: Path,
     tmp_path: Path,
@@ -120,6 +122,8 @@ def test_remove_branch_local_demo_assets_rejects_symlinked_ancestor(
         sync_module.remove_branch_local_demo_assets(checkout)
 
     assert sentinel.read_text(encoding="utf-8") == "runner data\n"
+
+
 def test_refresh_version_branch_rejects_symlinked_translation_tree(
     repo_root: Path,
     tmp_path: Path,
