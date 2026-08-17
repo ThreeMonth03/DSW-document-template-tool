@@ -389,7 +389,9 @@ def resolve_single_ref(repo: Path, requested_ref: str) -> str:
 def clean_allowed_root(path: Path, *, allowed_prefixes: tuple[str, ...]) -> None:
     resolved_path = path.resolve()
     allowed_roots = tuple(Path(prefix).resolve() for prefix in allowed_prefixes)
-    if not any(resolved_path == root or resolved_path.is_relative_to(root) for root in allowed_roots):
+    if not any(
+        resolved_path == root or resolved_path.is_relative_to(root) for root in allowed_roots
+    ):
         raise SystemExit(f"Refusing to clean unsafe path {path}")
     shutil.rmtree(resolved_path, ignore_errors=True)
 
