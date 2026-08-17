@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
 
 from defusedxml import ElementTree as DefusedET
 from defusedxml.common import DefusedXmlException
