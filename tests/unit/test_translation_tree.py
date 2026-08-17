@@ -405,7 +405,9 @@ def test_xliff_parser_rejects_entities(tmp_path: Path) -> None:
         xliff_module._parse_xliff(xliff_path)
 
 
-def test_xliff_parser_rejects_oversized_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_xliff_parser_rejects_oversized_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """XLIFF imports must bound input before constructing an XML tree."""
 
     monkeypatch.setattr(xliff_module, "MAX_XLIFF_BYTES", 16)
