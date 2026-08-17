@@ -24,6 +24,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          # Several fixes add independent regressions to the same large test files.
+          # Preserve both sides of those test-only hunks; Ruff will normalize imports
+          # and layout after all production changes have merged.
+          cat > .git/info/attributes <<'ATTRS'
+          tests/unit/test_tdk.py merge=union
+          tests/unit/test_translation_tree.py merge=union
+          tests/unit/test_render_project.py merge=union
+          tests/infra/test_translation_version_branch_sync.py merge=union
+          tests/infra/test_github_workflows.py merge=union
+          tests/infra/test_cli_entrypoints.py merge=union
+          ATTRS
+
           while read -r number branch; do
             echo "::group::Merge PR #${number} (${branch})"
             git fetch --no-tags origin \
