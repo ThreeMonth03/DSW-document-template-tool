@@ -302,12 +302,13 @@ def _candidate_from_manifest_unit(
         raise TranslationTreeError(
             f"Invalid translation-tree manifest entry at {tree_dir / TREE_MANIFEST_PATH}"
         )
+    tree_root = tree_dir.resolve()
     relative_document_path = Path(document_path_raw)
-    document_path = (tree_dir / relative_document_path).resolve()
+    document_path = (tree_root / relative_document_path).resolve()
     if (
         relative_document_path.is_absolute()
         or ".." in relative_document_path.parts
-        or not document_path.is_relative_to(tree_dir)
+        or not document_path.is_relative_to(tree_root)
     ):
         raise TranslationTreeError(
             f"Translation document path escapes tree directory: {document_path_raw}"
@@ -318,7 +319,7 @@ def _candidate_from_manifest_unit(
         source_file=source_file,
         unit_key=unit_key,
         unit_source_hash=unit_source_hash,
-        document_path=str(document_path.relative_to(tree_dir)),
+        document_path=str(document_path.relative_to(tree_root)),
         sentence_text=parse_sentence_text(
             document_path=document_path,
             source_lang=source_lang,
