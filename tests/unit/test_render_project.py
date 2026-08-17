@@ -13,6 +13,7 @@ from dsw_document_template_tool.render_project import (
     _load_project_events,
     _render_released_template_package,
     _resolve_or_create_project,
+    _write_rendered_document,
 )
 from dsw_document_template_tool.tdk import TemplateToolError
 
@@ -267,3 +268,25 @@ def test_released_package_renders_current_project_state(tmp_path: Path) -> None:
         }
     ]
     assert metadata["project_event_uuid"] is None
+
+
+def test_render_sidecar_omits_private_environment_metadata(tmp_path: Path) -> None:
+    """Published render metadata must not disclose paths or DSW identifiers."""
+
+    output_path = tmp_path / "rendered.pdf"
+    _write_rendered_document(
+        output_path=output_path,
+        document=b"rendered document",
+        metadata={
+            "mode": "draft_preview",
+            "bytes": 17,
+            "api_url": "https://private-dsw.example.test/wizard-api",
+            "project_uuid": "11111111-1111-4111-8111-111111111111",
+            "draft_uuid": "22222222-2222-4222-8222-222222222222",
+            "format_uuid": "33333333-3333-4333-8333-333333333333",
+            "output": str(output_path.resolve()),
+        },
+    )
+
+    sidecar = json.loads((tmp_path / "rendered.pdf.json").read_text(encoding="utf-8"))
+    assert sidecar == {"mode": "draft_preview", "bytes": 17}
