@@ -7,8 +7,12 @@ import shutil
 from pathlib import Path
 from zipfile import ZipFile
 
+import pytest
+
+from dsw_document_template_tool import tdk
 from dsw_document_template_tool.tdk import (
     read_local_template_package_coordinates,
+    TemplateToolError,
     stage_local_template_package,
 )
 
@@ -94,3 +98,41 @@ def test_stage_local_template_package_uses_content_addressed_coordinates(
             shutil.rmtree(unchanged_package.parent, ignore_errors=True)
         if second_package is not None:
             shutil.rmtree(second_package.parent, ignore_errors=True)
+
+
+def test_stage_local_template_package_rejects_excessive_expansion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A package with excessive expansion must be rejected before inflation."""
+
+    package_path = tmp_path / "bomb.zip"
+    _write_template_package(package_path, asset=b"0" * 2048)
+    monkeypatch.setattr(tdk, "_MAX_PACKAGE_UNCOMPRESSED_SIZE", 1024)
+
+    try:
+        stage_local_template_package(source_package=package_path)
+    except TemplateToolError as exc:
+        assert "expands to" in str(exc)
+    else:
+        raise AssertionError("oversized package was accepted")
+
+
+def test_stage_local_template_package_streams_ordinary_assets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Staging must not call ZipFile.read, which buffers a whole member."""
+
+    package_path = tmp_path / "template.zip"
+    _write_template_package(package_path, asset=b"asset" * 1000)
+
+    def fail_read(*args: object, **kwargs: object) -> bytes:
+        raise AssertionError("ZipFile.read buffered an archive member")
+
+    monkeypatch.setattr(ZipFile, "read", fail_read)
+    staged_package, _ = stage_local_template_package(source_package=package_path)
+    try:
+        with ZipFile(staged_package) as archive:
+            with archive.open("template/assets/font.ttf") as asset:
+                assert asset.read() == b"asset" * 1000
+    finally:
+        shutil.rmtree(staged_package.parent, ignore_errors=True)

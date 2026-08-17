@@ -14,6 +14,11 @@ from typing import Protocol
 from .models import TemplateCoordinates
 
 
+_MAX_TEMPLATE_JSON_SIZE = 16 * 1024 * 1024
+_MAX_PACKAGE_UNCOMPRESSED_SIZE = 128 * 1024 * 1024
+_COPY_BUFFER_SIZE = 1024 * 1024
+
+
 class _Digest(Protocol):
     def update(self, data: bytes, /) -> None: ...
 
@@ -37,8 +42,9 @@ def read_local_template_package_coordinates(package_path: Path) -> TemplateCoord
 
     try:
         with zipfile.ZipFile(package_path) as archive:
+            _validate_package_size(archive)
             member = _template_json_member(archive)
-            payload = json.loads(archive.read(member).decode("utf-8"))
+            payload = json.loads(_read_template_json(archive, member).decode("utf-8"))
     except (OSError, KeyError, UnicodeDecodeError, json.JSONDecodeError, zipfile.BadZipFile) as exc:
         raise TemplateToolError(f"Could not read template package {package_path}: {exc}") from exc
     return _coordinates_from_payload(payload, source=package_path)
@@ -65,11 +71,13 @@ def stage_local_template_package(
             zipfile.ZipFile(source_package) as source_archive,
             zipfile.ZipFile(staged_package, "w") as staged_archive,
         ):
+            _validate_package_size(source_archive)
             template_member = _template_json_member(source_archive)
             for member in source_archive.infolist():
-                content = source_archive.read(member)
                 if member.filename == template_member:
-                    payload = json.loads(content.decode("utf-8"))
+                    payload = json.loads(
+                        _read_template_json(source_archive, member).decode("utf-8")
+                    )
                     content = (
                         json.dumps(
                             _patched_template_payload(
@@ -83,7 +91,15 @@ def stage_local_template_package(
                         )
                         + "\n"
                     ).encode("utf-8")
-                staged_archive.writestr(member, content)
+                    staged_archive.writestr(member, content)
+                elif member.is_dir():
+                    staged_archive.writestr(member, b"")
+                else:
+                    with (
+                        source_archive.open(member) as source,
+                        staged_archive.open(member, "w") as destination,
+                    ):
+                        shutil.copyfileobj(source, destination, length=_COPY_BUFFER_SIZE)
     except Exception:
         shutil.rmtree(temp_root, ignore_errors=True)
         raise
@@ -252,15 +268,53 @@ def _canonical_template_package_digest(package_path: Path) -> str:
 
     digest = hashlib.sha256()
     with zipfile.ZipFile(package_path) as archive:
+        _validate_package_size(archive)
         template_member = _template_json_member(archive)
-        for member_name in sorted(name for name in archive.namelist() if not name.endswith("/")):
-            content = archive.read(member_name)
-            if member_name == template_member:
-                payload = json.loads(content.decode("utf-8"))
+        members = sorted(
+            (member for member in archive.infolist() if not member.is_dir()),
+            key=lambda member: member.filename,
+        )
+        for member in members:
+            _update_digest(digest, member.filename.encode("utf-8"))
+            if member.filename == template_member:
+                payload = json.loads(_read_template_json(archive, member).decode("utf-8"))
                 content = _canonical_template_payload_bytes(payload)
-            _update_digest(digest, member_name.encode("utf-8"))
-            _update_digest(digest, content)
+                _update_digest(digest, content)
+            else:
+                digest.update(member.file_size.to_bytes(8, byteorder="big"))
+                with archive.open(member) as source:
+                    while chunk := source.read(_COPY_BUFFER_SIZE):
+                        digest.update(chunk)
     return digest.hexdigest()
+
+
+def _validate_package_size(archive: zipfile.ZipFile) -> None:
+    """Reject packages whose declared expansion would consume excessive resources."""
+
+    total_size = sum(member.file_size for member in archive.infolist())
+    if total_size > _MAX_PACKAGE_UNCOMPRESSED_SIZE:
+        raise TemplateToolError(
+            "Template package expands to "
+            f"{total_size} bytes; limit is {_MAX_PACKAGE_UNCOMPRESSED_SIZE} bytes"
+        )
+
+
+def _read_template_json(
+    archive: zipfile.ZipFile,
+    member: str | zipfile.ZipInfo,
+) -> bytes:
+    info = archive.getinfo(member) if isinstance(member, str) else member
+    if info.file_size > _MAX_TEMPLATE_JSON_SIZE:
+        raise TemplateToolError(
+            f"template.json is {info.file_size} bytes; limit is {_MAX_TEMPLATE_JSON_SIZE} bytes"
+        )
+    with archive.open(info) as source:
+        content = source.read(_MAX_TEMPLATE_JSON_SIZE + 1)
+    if len(content) > _MAX_TEMPLATE_JSON_SIZE:
+        raise TemplateToolError(
+            f"template.json exceeds the {_MAX_TEMPLATE_JSON_SIZE}-byte limit"
+        )
+    return content
 
 
 def _canonical_template_payload_bytes(payload: object) -> bytes:
