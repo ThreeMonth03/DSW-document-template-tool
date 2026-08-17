@@ -246,8 +246,7 @@ def _template_json_member(archive: zipfile.ZipFile) -> str:
             seen_names.add(name)
     if duplicate_names:
         raise TemplateToolError(
-            "Template package contains duplicate ZIP members: "
-            + ", ".join(sorted(duplicate_names))
+            "Template package contains duplicate ZIP members: " + ", ".join(sorted(duplicate_names))
         )
     if "template.json" in names:
         return "template.json"
