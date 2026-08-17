@@ -263,11 +263,7 @@ def _write_rendered_document(
     # Sidecars may be published as CI artifacts. Keep them useful for identifying
     # the render kind and validating the payload without exposing DSW identifiers,
     # instance URLs, or resolved local paths contained in the internal metadata.
-    public_metadata = {
-        key: metadata[key]
-        for key in ("mode", "bytes")
-        if key in metadata
-    }
+    public_metadata = {key: metadata[key] for key in ("mode", "bytes") if key in metadata}
     info_path.write_text(
         json.dumps(public_metadata, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
