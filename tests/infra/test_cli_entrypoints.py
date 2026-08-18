@@ -14,6 +14,7 @@ import pytest
 import yaml
 
 from dsw_document_template_tool import compat_probe
+from dsw_document_template_tool.regression_config import write_package_render_config
 
 
 def _tool_cli(repo_root: Path, command: str, *args: str) -> subprocess.CompletedProcess[str]:
@@ -1211,6 +1212,37 @@ def test_generate_translated_regression_config_uses_full_fixture_plan(
     for fixture in payload["fixtures"]:
         events_file = (output_path.parent / fixture["events_file"]).resolve()
         assert events_file.is_file()
+
+
+def test_generated_translated_config_preserves_environment_path_references(
+    repo_root: Path,
+    tmp_path: Path,
+) -> None:
+    """Path rebasing should leave environment references for the runtime loader."""
+
+    base_payload = yaml.safe_load(
+        (repo_root / "config" / "regression.ci.yml").read_text(encoding="utf-8")
+    )
+    base_payload["tdk"]["executable"] = "${TOOL_ROOT}/bin/dsw-tdk"
+    base_payload["fixtures"][0]["events_file"] = "$EVENTS_FILE"
+    base_config = tmp_path / "base" / "regression.yml"
+    base_config.parent.mkdir()
+    base_config.write_text(yaml.safe_dump(base_payload), encoding="utf-8")
+    package_path = tmp_path / "template.zip"
+    package_path.write_bytes(b"package")
+    output_path = tmp_path / "generated" / "regression.yml"
+
+    write_package_render_config(
+        base_config=base_config,
+        output=output_path,
+        output_dir=tmp_path / "output",
+        package_path=package_path,
+        knowledge_model_path=tmp_path / "knowledge-model.json",
+    )
+
+    payload = yaml.safe_load(output_path.read_text(encoding="utf-8"))
+    assert payload["tdk"]["executable"] == "${TOOL_ROOT}/bin/dsw-tdk"
+    assert payload["fixtures"][0]["events_file"] == "$EVENTS_FILE"
 
 
 def test_run_regression_plan_selects_recommended_versions_for_metamodel(
