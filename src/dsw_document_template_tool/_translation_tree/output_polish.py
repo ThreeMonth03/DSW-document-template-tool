@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,6 +42,10 @@ _COST_DESCRIPTION_DOT_REPLACEMENT = (
     '{{ "。" if __tr_dot_value[-1] not in ".。!！?？" else "" }}{%- endif -%}'
 )
 _REMAINING_DOT_FILTER_PATTERN = re.compile(r"\|dot\b")
+_MACHINE_CONTROLLED_REGION_PATTERN = re.compile(
+    r"(?:\{\{.*?\}\}|\{%.*?%\}|\{#.*?#\}|<[^>]*>)",
+    re.DOTALL,
+)
 
 
 @dataclass(frozen=True)
@@ -244,10 +249,38 @@ def _normalize_template_punctuation(text: str) -> str:
         "{% if not loop.last %}、{% endif %}",
     )
     text = re.sub(r"(\{%-\s*else\s*-%})\.", r"\1。", text)
-    text = re.sub(rf"(?<=[{_CJK_OR_JINJA_END_CLASS}])\s*:\s*", "：", text)
     text = _JINJA_STRING_TRAILING_FULLWIDTH_GAP_PATTERN.sub("", text)
-    text = re.sub(rf"(?<=[{_CJK_OR_JINJA_END_CLASS}])\s+（", "（", text)
     text = _INLINE_TAG_BEFORE_FULLWIDTH_PAREN_PATTERN.sub(r"\1（", text)
+    return _transform_visible_template_text(text, _normalize_visible_punctuation)
+
+
+def _transform_visible_template_text(text: str, transform: Callable[[str], str]) -> str:
+    """Transform rendered prose while preserving Jinja and HTML tag contents."""
+
+    result: list[str] = []
+    previous_end = 0
+    for match in _MACHINE_CONTROLLED_REGION_PATTERN.finditer(text):
+        visible_text = text[previous_end : match.start()]
+        if previous_end:
+            # Preserve the boundary context (notably a closing Jinja brace)
+            # without passing the protected region itself to the transform.
+            visible_text = transform(text[previous_end - 1] + visible_text)[1:]
+        else:
+            visible_text = transform(visible_text)
+        result.append(visible_text)
+        result.append(match.group())
+        previous_end = match.end()
+    visible_text = text[previous_end:]
+    if previous_end:
+        visible_text = transform(text[previous_end - 1] + visible_text)[1:]
+    else:
+        visible_text = transform(visible_text)
+    result.append(visible_text)
+    return "".join(result)
+
+
+def _normalize_visible_punctuation(text: str) -> str:
+    text = re.sub(rf"(?<=[{_CJK_OR_JINJA_END_CLASS}])\s*:\s*", "：", text)
+    text = re.sub(rf"(?<=[{_CJK_OR_JINJA_END_CLASS}])\s+（", "（", text)
     text = re.sub(rf"(?<=[{_CJK_OR_JINJA_END_CLASS}])\.", "。", text)
-    text = text.replace("。.", "。")
-    return text
+    return text.replace("。.", "。")
