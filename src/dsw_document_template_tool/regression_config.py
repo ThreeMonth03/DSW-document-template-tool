@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -205,6 +206,8 @@ def _is_path_reference(value: str) -> bool:
 
 
 def _rebase_path(value: str, source_dir: Path, output_dir: Path) -> str:
+    if re.search(r"\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[^}]+\})", value):
+        return value
     path = Path(value)
     resolved = path if path.is_absolute() else source_dir / path
     return _relative_posix_path(resolved.resolve(), output_dir)
