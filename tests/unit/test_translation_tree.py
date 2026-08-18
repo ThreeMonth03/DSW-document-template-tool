@@ -169,6 +169,21 @@ def test_polish_zh_hant_template_text_removes_jinja_string_trailing_gap() -> Non
     assert polish_zh_hant_template_text(source) == ("{%- do sentences.append('其他法律依據：') -%}")
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        '{{ lookup("資料.欄位") }}',
+        '{{ lookup("資料: 欄位") }}',
+        '{% set key = "資料.欄位" %}',
+        '<a data-key="資料.欄位">連結</a>',
+    ],
+)
+def test_polish_zh_hant_template_text_preserves_machine_controlled_regions(source: str) -> None:
+    """Prose polish must not change lookup keys, statements, or HTML attributes."""
+
+    assert polish_zh_hant_template_text(source) == source
+
+
 def test_polish_zh_hant_template_text_replaces_dot_filters_inside_chinese_sentences() -> None:
     """The English `dot` filter can double-punctuate translated zh-Hant clauses."""
 

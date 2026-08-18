@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def test_check_translation_repository_docs_accepts_complete_docs(
     repo_root: Path,
@@ -182,3 +184,35 @@ duplicate-key validation.
     assert result.returncode == 1
     assert "broken relative link" in result.stderr
     assert "docs/missing.md" in result.stderr
+
+
+@pytest.mark.parametrize("target", ["http://[", "%00"])
+def test_check_translation_repository_docs_reports_invalid_links(
+    repo_root: Path,
+    tmp_path: Path,
+    target: str,
+) -> None:
+    """Malformed link targets should be reported without a traceback."""
+
+    translation_repo = tmp_path / "translation-repo"
+    translation_repo.mkdir()
+    (translation_repo / "README.md").write_text(
+        f"# Translation Repo\n\nRead the [invalid guide]({target}).\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "ci" / "check_translation_repository_docs.py"),
+            "--repo",
+            str(translation_repo),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert f"invalid Markdown link: README.md links to `{target}`" in result.stderr
+    assert "Traceback" not in result.stderr
