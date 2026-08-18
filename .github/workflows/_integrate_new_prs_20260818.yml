@@ -1,0 +1,73 @@
+name: Integrate reviewed document-template PRs
+
+on:
+  push:
+    branches:
+      - integration/new-prs-20260818-document
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out integration branch
+        uses: actions/checkout@v7
+        with:
+          ref: integration/new-prs-20260818-document
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Merge reviewed PR branches
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          while read -r number branch; do
+            echo "::group::Merge PR #${number} (${branch})"
+            git fetch --no-tags origin \
+              "refs/heads/${branch}:refs/remotes/incoming/pr-${number}"
+            git merge --no-ff --no-edit \
+              "refs/remotes/incoming/pr-${number}" \
+              -m "Merge reviewed PR #${number} into integration branch"
+            echo "::endgroup::"
+          done <<'PRS'
+          36 codex/fix-environment-variable-path-rebase-issue
+          37 codex/fix-crash-from-malformed-markdown-links
+          38 codex/fix-zh-hant-polish-affecting-jinja-expressions
+          39 codex/fix-auto-commit-gate-for-readme.md
+          PRS
+
+      - name: Install development dependencies
+        run: make install-dev
+
+      - name: Normalize and verify integrated fixes
+        run: |
+          set -euo pipefail
+          .venv/bin/python -m ruff check --fix --config config/ruff.toml \
+            scripts/ci src tests
+          .venv/bin/python -m ruff format --config config/ruff.toml \
+            docs/conf.py scripts/ci/*.py src tests
+          .venv/bin/python -m pytest -q \
+            tests/infra/test_translation_repository_docs.py \
+            tests/infra/test_github_workflows.py
+          .venv/bin/python -m pytest -q \
+            tests/infra/test_cli_entrypoints.py \
+            -k generated_translated_config_preserves_environment_path_references
+          .venv/bin/python -m pytest -q \
+            tests/unit/test_translation_tree.py \
+            -k polish_zh_hant_template_text
+
+      - name: Commit integration and remove helper
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/_integrate_new_prs_20260818.yml
+          git add -A
+          git commit -m "fix: integrate reviewed document-template fixes"
+          git push origin HEAD:integration/new-prs-20260818-document
