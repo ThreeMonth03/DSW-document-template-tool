@@ -457,6 +457,7 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
     assert "git add \\" in workflow_text
     assert '"$EXPANDED_TEMPLATE_DIR" \\' in workflow_text
     assert '"$TRANSLATION_TREE_DIR/.translation-tree/manifest.json" \\' in workflow_text
+    assert '"$TRANSLATION_TREE_DIR/README.md" \\' in workflow_text
     assert '"$TRANSLATION_TREE_DIR/outline.md" \\' in workflow_text
     assert '"$TRANSLATION_TREE_DIR/tree"' in workflow_text
     assert 'push origin "HEAD:refs/heads/$TARGET_REF"' in workflow_text
@@ -531,6 +532,7 @@ def test_external_translation_sync_example_workflow(repo_root: Path) -> None:
     assert "chore(sync): refresh generated document outputs" not in workflow_text
     assert 'git add "${output_paths[@]}"' not in workflow_text
     assert '"$TRANSLATION_TREE_DIR/.translation-tree/manifest.json"' in workflow_text
+    assert '"$TRANSLATION_TREE_DIR/README.md"' in workflow_text
     assert '"$TRANSLATION_TREE_DIR/tree"' in workflow_text
     assert "outline.md" in workflow_text
     assert "merge-report.json" in workflow_text
