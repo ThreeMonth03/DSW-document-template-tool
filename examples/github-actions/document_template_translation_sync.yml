@@ -148,6 +148,7 @@ jobs:
           required_paths=(
             "$EXPANDED_TEMPLATE_DIR"
             "$TRANSLATION_TREE_DIR/.translation-tree/manifest.json"
+            "$TRANSLATION_TREE_DIR/README.md"
             "$TRANSLATION_TREE_DIR/outline.md"
             "$TRANSLATION_TREE_DIR/tree"
           )
@@ -162,6 +163,7 @@ jobs:
           git add \
             "$EXPANDED_TEMPLATE_DIR" \
             "$TRANSLATION_TREE_DIR/.translation-tree/manifest.json" \
+            "$TRANSLATION_TREE_DIR/README.md" \
             "$TRANSLATION_TREE_DIR/outline.md" \
             "$TRANSLATION_TREE_DIR/tree"
           git commit -m "chore(sync): refresh document template translations"
@@ -181,6 +183,8 @@ jobs:
         working-directory: template-repo
         run: |
           set -euo pipefail
+          # `README.md` documents the generated translation tree and must stay
+          # in sync with the exporter output.
           # `outline.md` is a generated progress view. Keep it committed so
           # translators and reviewers can trust its checkbox state.
           # `merge-report.json` is diagnostic metadata; it can change match
@@ -189,11 +193,13 @@ jobs:
           git diff --exit-code -- \
             "$EXPANDED_TEMPLATE_DIR" \
             "$TRANSLATION_TREE_DIR/.translation-tree/manifest.json" \
+            "$TRANSLATION_TREE_DIR/README.md" \
             "$TRANSLATION_TREE_DIR/outline.md" \
             "$TRANSLATION_TREE_DIR/tree"
           test -z "$(git status --short -- \
             "$EXPANDED_TEMPLATE_DIR" \
             "$TRANSLATION_TREE_DIR/.translation-tree/manifest.json" \
+            "$TRANSLATION_TREE_DIR/README.md" \
             "$TRANSLATION_TREE_DIR/outline.md" \
             "$TRANSLATION_TREE_DIR/tree")"
 
