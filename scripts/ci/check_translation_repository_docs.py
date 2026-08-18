@@ -201,10 +201,17 @@ def _missing_relative_link_failures(
         markdown = document.read_text(encoding="utf-8")
         for match in MARKDOWN_LINK_PATTERN.finditer(markdown):
             target = match.group("target").strip().strip("<>")
-            parsed = urlsplit(target)
-            if parsed.scheme or parsed.netloc or not parsed.path:
+            try:
+                parsed = urlsplit(target)
+                if parsed.scheme or parsed.netloc or not parsed.path:
+                    continue
+                target_path = (document.parent / unquote(parsed.path)).resolve()
+            except ValueError as exc:
+                failures.append(
+                    f"invalid Markdown link: {document.relative_to(repo)} links to "
+                    f"`{target}` ({exc})"
+                )
                 continue
-            target_path = (document.parent / unquote(parsed.path)).resolve()
             if not target_path.exists():
                 failures.append(
                     f"broken relative link: {document.relative_to(repo)} links to `{target}`"
